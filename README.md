@@ -233,7 +233,7 @@ Human Review / Final Decision
 | Team Member           | Primary Role                                                     |
 | --------------------- | ---------------------------------------------------------------- |
 | Mahul Patel           | Project Manager, Dataset Researcher & Machine Learning Developer |
-| Kartar Singh Johal    | Backend & API Developer                                          |
+| Kartar Singh Johal    | Backend & API Developer, Feature Engineering                                         |
 | Bhupinder Singh       | Frontend Developer, UI/UX Designer & Software Tester             |
 | Jaskaran Singh Sandhu | Database Support Developer & Software Tester                     |
 
