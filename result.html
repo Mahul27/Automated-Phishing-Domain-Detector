@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scan Result - Automated Phishing Domain Detector</title>
+    <!-- CSS File -->
+    <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+
+    <!-- Outer frame -->
+    <div class="dashboard-container">
+
+        <!-- Left: Sidebar -->
+        <aside class="sidebar">
+            <div>
+                <div class="sidebar-title">THREAT HUNTERS</div>
+                
+                <ul class="nav-links">
+                    <li><a href="dashboard.html" class="nav-item">Dashboard</a></li>
+                    <li><a href="manual_scan.html" class="nav-item">Manual Scan</a></li>
+                    <li><a href="history.html" class="nav-item">History</a></li>
+                    <li><a href="result.html" class="nav-item active">Scan Result</a></li>
+                </ul>
+            </div>
+
+            <!-- Sign out -->
+            <div>
+                <a href="index.html" class="signout-link">Sign out</a>
+            </div>
+        </aside>
+
+        <!-- Right: Main Content -->
+        <main class="main-content">
+
+            <!-- Header -->
+            <div class="header-row">
+                <div class="header-title">
+                    <h1>Scan Result</h1>
+                    <p>Detailed analysis of the requested domain.</p>
+                </div>
+            </div>
+
+            <!-- Result Box -->
+            <section class="result-box" style="border: 1px solid black; padding: 20px; margin-bottom: 20px;">
+                <h2>Scan Summary</h2>
+                <ul style="list-style: none; padding: 0;">
+                    <li style="margin-bottom: 10px;"><strong>Domain:</strong> example-phishing-site.com</li>
+                    <li style="margin-bottom: 10px;"><strong>Risk score (0-100):</strong> 87</li>
+                    <li style="margin-bottom: 10px;"><strong>Prediction:</strong> Phishing</li>
+                    <li style="margin-bottom: 10px;"><strong>Timestamp:</strong> 2026-08-26 18:25:10</li>
+                </ul>
+            </section>
+
+            <!-- SHAP Explanation Box -->
+            <section class="shap-box" style="border: 1px solid black; padding: 20px;">
+                <h2>SHAP Explanation</h2>
+                <p>This section shows why the model made this prediction. Key factors influencing the risk score:</p>
+                <ul style="margin-top: 10px; margin-left: 20px;">
+                    <li>High number of hyphens in domain name (+15 risk)</li>
+                    <li>Recently registered domain (+30 risk)</li>
+                    <li>SSL certificate from non-trusted issuer (+25 risk)</li>
+                </ul>
+                <div style="border: 1px dashed black; height: 150px; display: flex; justify-content: center; align-items: center; margin-top: 20px;">
+                    [ Placeholder for SHAP Waterfall Chart ]
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+</body>
+</html>
