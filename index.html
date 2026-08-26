@@ -4,37 +4,40 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Automated Phishing Domain Detector</title>
-    <!-- Separate CSS file for simple alignment & layout -->
+    <!-- CSS File -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <!-- Outer Card Frame (matches wireframe) -->
+    <!-- Outer box -->
     <div class="container">
         
-        <!-- Header / Brand -->
+        <!-- Header -->
         <header class="header">
             <span class="brand-title">Automated Phishing Domain Detector</span>
         </header>
 
-        <!-- Main Body: Two Columns (Image Left, Login Right) -->
+        <!-- Content -->
         <main class="content">
             
-            <!-- Left Side: Image Placeholder -->
+            <!-- Left side: Image -->
             <section class="image-section">
                 <div class="image-placeholder">
                     image
                 </div>
             </section>
 
-            <!-- Right Side: Login Form -->
+            <!-- Right side: Login form -->
             <section class="login-section">
                 <h2 class="login-title">LOGIN</h2>
 
-                <form action="/login" method="POST">
-                    <!-- Email Address -->
+                <!-- Error message -->
+                <p id="error-message" class="error-text"></p>
+
+                <form id="login-form">
+                    <!-- Username / Email -->
                     <div class="form-group">
-                        <input type="email" id="email" name="email" placeholder="Email address" required>
+                        <input type="text" id="username" name="username" placeholder="Username or Email" required>
                     </div>
 
                     <!-- Password -->
@@ -42,7 +45,7 @@
                         <input type="password" id="password" name="password" placeholder="Password" required>
                     </div>
 
-                    <!-- Remember Me & Forgot Password Row -->
+                    <!-- Options -->
                     <div class="form-row">
                         <label for="remember">
                             <input type="checkbox" id="remember" name="remember">
@@ -51,7 +54,7 @@
                         <a href="#">Forgot password?</a>
                     </div>
 
-                    <!-- Login Button -->
+                    <!-- Button -->
                     <button type="submit" class="btn-login">Login button</button>
                 </form>
             </section>
@@ -59,5 +62,7 @@
         </main>
     </div>
 
+    <!-- JS File -->
+    <script src="login.js"></script>
 </body>
 </html>

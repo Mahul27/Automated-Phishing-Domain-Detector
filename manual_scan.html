@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual Domain Scan - Automated Phishing Domain Detector</title>
+    <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+
+    <!-- Outer frame -->
+    <div class="dashboard-container">
+
+        <!-- Left: Sidebar -->
+        <aside class="sidebar">
+            <div>
+                <div class="sidebar-title">THREAT HUNTERS</div>
+                
+                <ul class="nav-links">
+                    <li><a href="dashboard.html" class="nav-item">Dashboard</a></li>
+                    <li><a href="manual_scan.html" class="nav-item active">Manual Scan</a></li>
+                    <li><a href="history.html" class="nav-item">History</a></li>
+                </ul>
+            </div>
+
+            <!-- Sign out -->
+            <div>
+                <a href="index.html" class="signout-link">Sign out</a>
+            </div>
+        </aside>
+
+        <!-- Right: Main Content -->
+        <main class="main-content">
+
+            <!-- Header -->
+            <div class="header-row">
+                <div class="header-title">
+                    <h1>Manual Domain Scan</h1>
+                    <p>Paste any domain to request a risk score and explainability result.</p>
+                </div>
+            </div>
+
+            <!-- Main Input Box -->
+            <section class="scan-box">
+                <h2>Enter a domain</h2>
+                <div class="scan-input-group">
+                    <label>Domain name or URL</label>
+                    <div class="scan-input-row">
+                        <input type="text">
+                        <button type="button" class="btn-scan">SCAN DOMAIN</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- State Boxes -->
+            <section class="state-boxes">
+                <div class="state-box">
+                    <strong>VALIDATION STATE</strong>
+                    <p>Please enter a valid domain. Remove spaces or unsupported characters.</p>
+                </div>
+                <div class="state-box">
+                    <strong>LOADING STATE</strong>
+                    <p>Scanning domain...</p>
+                    <p>Extracting lexical, WHOIS, SSL, DNS, and hosting features.</p>
+                </div>
+            </section>
+
+            <!-- Steps Box -->
+            <section class="steps-box">
+                <ol>
+                    <li>Validate the domain</li>
+                    <li>Request analysis from backend</li>
+                    <li>Extract detailed domain features</li>
+                    <li>Calculate the 0-100 risk score</li>
+                    <li>Open the Scan Result page</li>
+                </ol>
+            </section>
+
+        </main>
+    </div>
+
+</body>
+</html>

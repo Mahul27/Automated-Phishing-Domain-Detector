@@ -1,111 +1,75 @@
-/* Minimal layout & alignment only (No colors / Monochrome wireframe) */
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    font-family: sans-serif;
-}
-
+/* Beginner simple style but aligned */
 body {
+    background-color: white;
+    color: black;
+    font-family: sans-serif;
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    padding: 20px;
+    margin: 0;
 }
 
-/* Outer wireframe container */
 .container {
-    width: 100%;
-    max-width: 850px;
     border: 1px solid black;
-    border-radius: 8px;
-    padding: 24px;
+    padding: 20px;
+    text-align: center;
+    width: 600px;
 }
 
-/* Top brand / title */
 .header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 24px;
-}
-
-.logo-box {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border: 1px solid black;
+    margin-bottom: 20px;
     font-weight: bold;
+    font-size: 1.2em;
 }
 
-/* Two-column layout */
 .content {
     display: flex;
-    gap: 32px;
-    align-items: center;
+    gap: 20px;
 }
 
-/* Left: Image placeholder */
 .image-section {
     flex: 1;
-    display: flex;
-    justify-content: center;
 }
 
 .image-placeholder {
-    width: 100%;
-    max-width: 320px;
-    height: 280px;
     border: 1px solid black;
+    height: 250px;
     display: flex;
-    align-items: center;
     justify-content: center;
+    align-items: center;
 }
 
-/* Right: Login section */
 .login-section {
     flex: 1;
-    max-width: 320px;
+    text-align: left;
 }
 
 .login-title {
     text-align: center;
-    margin-bottom: 20px;
 }
 
 .form-group {
-    margin-bottom: 12px;
+    margin-bottom: 15px;
 }
 
 .form-group input {
     width: 100%;
     padding: 8px;
-    border: 1px solid black;
-    border-radius: 4px;
+    box-sizing: border-box;
 }
 
-/* Form options: Remember me & Forgot password */
 .form-row {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-    font-size: 13px;
+    margin-bottom: 15px;
+    font-size: 0.9em;
 }
 
-.form-row a {
-    color: black;
-}
-
-/* Login button */
 .btn-login {
     width: 100%;
-    padding: 8px;
-    background: transparent;
+    padding: 10px;
+    background: white;
     border: 1px solid black;
-    border-radius: 4px;
     cursor: pointer;
 }

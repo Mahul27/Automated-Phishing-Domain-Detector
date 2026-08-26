@@ -1,0 +1,101 @@
+/* Beginner simple style but aligned for dashboard */
+body {
+    background-color: white;
+    color: black;
+    font-family: sans-serif;
+    margin: 0;
+    display: flex;
+    min-height: 100vh;
+}
+
+.dashboard-container {
+    display: flex;
+    width: 100vw;
+}
+
+.sidebar {
+    width: 200px;
+    border-right: 1px solid black;
+    padding: 20px;
+}
+
+.nav-links {
+    list-style-type: none;
+    padding: 0;
+}
+
+.nav-links li {
+    margin-bottom: 10px;
+}
+
+.nav-item {
+    text-decoration: none;
+    color: black;
+}
+
+.nav-item.active {
+    font-weight: bold;
+    text-decoration: underline;
+}
+
+.main-content {
+    flex-grow: 1;
+    padding: 20px;
+}
+
+.header-row {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px solid black;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+.metrics-row, .bottom-row, .state-boxes {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.metric-card, .info-card, .state-box, .scan-box, .steps-box, .alerts-section, .history-box, .empty-state-box {
+    border: 1px solid black;
+    padding: 15px;
+    flex: 1;
+}
+
+.filter-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.filter-row input, .filter-row select, .filter-row button {
+    padding: 5px;
+}
+
+.scan-input-group {
+    margin-bottom: 15px;
+}
+
+.scan-input-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 5px;
+}
+
+.scan-input-row input {
+    flex-grow: 1;
+}
+
+.pagination {
+    text-align: center;
+    margin-top: 10px;
+}
+
+.alerts-wireframe-box {
+    border: 1px solid black;
+    min-height: 150px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
