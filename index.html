@@ -1,13 +1,63 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>automated-phishing-domain-detector</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Automated Phishing Domain Detector</title>
+    <!-- Separate CSS file for simple alignment & layout -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Outer Card Frame (matches wireframe) -->
+    <div class="container">
+        
+        <!-- Header / Brand -->
+        <header class="header">
+            <span class="brand-title">Automated Phishing Domain Detector</span>
+        </header>
+
+        <!-- Main Body: Two Columns (Image Left, Login Right) -->
+        <main class="content">
+            
+            <!-- Left Side: Image Placeholder -->
+            <section class="image-section">
+                <div class="image-placeholder">
+                    image
+                </div>
+            </section>
+
+            <!-- Right Side: Login Form -->
+            <section class="login-section">
+                <h2 class="login-title">LOGIN</h2>
+
+                <form action="/login" method="POST">
+                    <!-- Email Address -->
+                    <div class="form-group">
+                        <input type="email" id="email" name="email" placeholder="Email address" required>
+                    </div>
+
+                    <!-- Password -->
+                    <div class="form-group">
+                        <input type="password" id="password" name="password" placeholder="Password" required>
+                    </div>
+
+                    <!-- Remember Me & Forgot Password Row -->
+                    <div class="form-row">
+                        <label for="remember">
+                            <input type="checkbox" id="remember" name="remember">
+                            Remember me
+                        </label>
+                        <a href="#">Forgot password?</a>
+                    </div>
+
+                    <!-- Login Button -->
+                    <button type="submit" class="btn-login">Login button</button>
+                </form>
+            </section>
+
+        </main>
+    </div>
+
+</body>
 </html>
