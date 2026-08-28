@@ -1,12 +1,12 @@
+import Header from "../components/Header";
+
 export default function ScanResult() {
   return (
     <>
-      <div className="header-row">
-        <div className="header-title">
-          <h1>Scan Result</h1>
-          <p>Detailed analysis of the requested domain.</p>
-        </div>
-      </div>
+      <Header 
+        title="Scan Result" 
+        subtitle="Detailed analysis of the requested domain." 
+      />
 
       <section className="result-box" style={{ border: '1px solid black', padding: '20px', marginBottom: '20px' }}>
         <h2>Scan Summary</h2>

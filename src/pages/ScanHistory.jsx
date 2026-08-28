@@ -1,12 +1,12 @@
+import Header from "../components/Header";
+
 export default function ScanHistory() {
   return (
     <>
-      <div className="header-row">
-        <div className="header-title">
-          <h1>Scan History</h1>
-          <p>Search and review earlier detection records.</p>
-        </div>
-      </div>
+      <Header 
+        title="Scan History" 
+        subtitle="Search and review earlier detection records." 
+      />
 
       <section className="filter-row">
         <input type="text" className="search-input" placeholder="Search by domain or scan ID" />

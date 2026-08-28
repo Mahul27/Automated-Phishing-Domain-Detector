@@ -1,17 +1,13 @@
 import { Link } from "react-router-dom";
+import Header from "../components/Header";
 
 export default function ManualScan() {
   return (
     <>
-      <div className="header-row">
-        <div className="header-title">
-          <h1>Manual Domain Scan</h1>
-          <p>
-            Paste any domain to request a risk score and explainability
-            result.
-          </p>
-        </div>
-      </div>
+      <Header 
+        title="Manual Domain Scan" 
+        subtitle="Paste any domain to request a risk score and explainability result." 
+      />
 
       <section className="scan-box">
         <h2>Enter a domain</h2>

@@ -1,15 +1,13 @@
 import { Link } from 'react-router-dom';
+import Header from '../components/Header';
 
 export default function Dashboard() {
   return (
     <>
-      <div className="header-row">
-        <div className="header-title">
-          <h1>Dashboard</h1>
-          <p>Live overview of newly registered domains and flagged alerts</p>
-        </div>
-        <div className="user-badge">Logged in</div>
-      </div>
+      <Header 
+        title="Dashboard" 
+        subtitle="Live overview of newly registered domains and flagged alerts" 
+      />
 
       <section className="metrics-row">
         <div className="metric-card">

@@ -1,9 +1,10 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import Login from './components/Login';
-import Dashboard from './components/Dashboard';
-import ManualScan from './components/ManualScan';
-import ScanHistory from './components/ScanHistory';
-import ScanResult from './components/ScanResult';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import Dashboard from './pages/Dashboard';
+import ManualScan from './pages/ManualScan';
+import ScanHistory from './pages/ScanHistory';
+import ScanResult from './pages/ScanResult';
 import Layout from './components/Layout';
 import './index.css';
 
@@ -12,6 +13,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
         
         {/* Authenticated Routes with Sidebar/Layout */}
         <Route element={<Layout />}>
