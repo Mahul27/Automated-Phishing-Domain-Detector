@@ -4,6 +4,7 @@ import Dashboard from './components/Dashboard';
 import ManualScan from './components/ManualScan';
 import ScanHistory from './components/ScanHistory';
 import ScanResult from './components/ScanResult';
+import Layout from './components/Layout';
 import './index.css';
 
 function App() {
@@ -11,10 +12,14 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Login />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/scan" element={<ManualScan />} />
-        <Route path="/history" element={<ScanHistory />} />
-        <Route path="/result" element={<ScanResult />} />
+        
+        {/* Authenticated Routes with Sidebar/Layout */}
+        <Route element={<Layout />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/scan" element={<ManualScan />} />
+          <Route path="/history" element={<ScanHistory />} />
+          <Route path="/result" element={<ScanResult />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   );
