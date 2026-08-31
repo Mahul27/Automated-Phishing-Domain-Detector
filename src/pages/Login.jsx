@@ -1,5 +1,6 @@
 import { useNavigate, Link } from "react-router-dom";
 import { useState } from "react";
+import logo from "../assets/logo.webp"; // Using the uploaded logo
 
 export default function Login() {
   const navigate = useNavigate();
@@ -37,7 +38,7 @@ export default function Login() {
 
         <main className="content">
           <section className="image-section">
-            <div className="image-placeholder">image</div>
+            <img src={logo} alt="Threat Hunters Logo" style={{ width: '100%', height: 'auto', borderRadius: '8px' }} />
           </section>
 
           <section className="login-section">
@@ -66,12 +67,8 @@ export default function Login() {
                 />
               </div>
 
-              <div className="form-row">
-                <label htmlFor="remember">
-                  <input type="checkbox" id="remember" name="remember" />{" "}
-                  Remember me
-                </label>
-                <a href="#">Forgot password?</a>
+              <div className="form-row" style={{ justifyContent: 'flex-end' }}>
+                <Link to="/forgot-password">Forgot password?</Link>
               </div>
 
               <button type="submit" className="btn-login">

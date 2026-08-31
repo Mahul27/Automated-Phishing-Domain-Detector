@@ -24,6 +24,21 @@ export default function Dashboard() {
         </div>
       </section>
 
+      <section className="metrics-row">
+        <div className="metric-card" style={{ backgroundColor: '#f9f9f9' }}>
+          <h3>openSquat / openphish</h3>
+          <div className="metric-sub">Active Source</div>
+        </div>
+        <div className="metric-card" style={{ backgroundColor: '#f9f9f9' }}>
+          <h3>phishtank / CT logs</h3>
+          <div className="metric-sub">Active Source</div>
+        </div>
+        <div className="metric-card" style={{ backgroundColor: '#f9f9f9' }}>
+          <h3>NZ legitimate list</h3>
+          <div className="metric-sub">Active Source</div>
+        </div>
+      </section>
+
       <section className="filter-row">
         <input type="text" className="search-input" placeholder="Search domain..." />
         <select className="filter-select"><option>Risk: All</option></select>

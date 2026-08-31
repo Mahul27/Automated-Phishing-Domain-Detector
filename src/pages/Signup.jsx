@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import logo from "../assets/logo.webp";
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -35,7 +36,7 @@ export default function Signup() {
 
         <main className="content">
           <section className="image-section">
-            <div className="image-placeholder">image</div>
+            <img src={logo} alt="Threat Hunters Logo" style={{ width: '100%', height: 'auto', borderRadius: '8px' }} />
           </section>
 
           <section className="login-section">
