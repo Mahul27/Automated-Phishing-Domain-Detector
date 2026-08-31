@@ -1,12 +1,12 @@
-import { Link } from 'react-router-dom';
-import Header from '../components/Header';
+import { Link } from "react-router-dom";
+import Header from "../components/Header";
 
 export default function Dashboard() {
   return (
     <>
-      <Header 
-        title="Dashboard" 
-        subtitle="Live overview of newly registered domains and flagged alerts" 
+      <Header
+        title="Dashboard"
+        subtitle="Live overview of newly registered domains and flagged alerts"
       />
 
       <section className="metrics-row">
@@ -25,26 +25,30 @@ export default function Dashboard() {
       </section>
 
       <section className="metrics-row">
-        <div className="metric-card" style={{ backgroundColor: '#f9f9f9' }}>
+        <div className="metric-card" style={{ backgroundColor: "#f9f9f9" }}>
           <h3>openSquat / openphish</h3>
-          <div className="metric-sub">Active Source</div>
-        </div>
-        <div className="metric-card" style={{ backgroundColor: '#f9f9f9' }}>
-          <h3>phishtank / CT logs</h3>
-          <div className="metric-sub">Active Source</div>
-        </div>
-        <div className="metric-card" style={{ backgroundColor: '#f9f9f9' }}>
-          <h3>NZ legitimate list</h3>
           <div className="metric-sub">Active Source</div>
         </div>
       </section>
 
       <section className="filter-row">
-        <input type="text" className="search-input" placeholder="Search domain..." />
-        <select className="filter-select"><option>Risk: All</option></select>
-        <select className="filter-select"><option>Status: All</option></select>
-        <select className="filter-select"><option>Period: 24h</option></select>
-        <Link to="/scan" className="btn-manual-scan">+ MANUAL SCAN</Link>
+        <input
+          type="text"
+          className="search-input"
+          placeholder="Search domain..."
+        />
+        <select className="filter-select">
+          <option>Risk: All</option>
+        </select>
+        <select className="filter-select">
+          <option>Status: All</option>
+        </select>
+        <select className="filter-select">
+          <option>Period: 24h</option>
+        </select>
+        <Link to="/scan" className="btn-manual-scan">
+          + MANUAL SCAN
+        </Link>
       </section>
 
       <section className="alerts-section">

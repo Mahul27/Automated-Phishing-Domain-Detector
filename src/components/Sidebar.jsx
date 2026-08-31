@@ -38,7 +38,7 @@ export default function Sidebar() {
           </li>
           <li>
             <NavLink
-              to="/result"
+              to="/review/1"
               className={({ isActive }) =>
                 isActive ? "nav-item active" : "nav-item"
               }

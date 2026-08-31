@@ -16,7 +16,7 @@ export default function ManualScan() {
           <div className="scan-input-row">
             <input type="text" />
             <Link
-              to="/result"
+              to="/review/1"
               className="btn-scan"
               style={{
                 textDecoration: "none",

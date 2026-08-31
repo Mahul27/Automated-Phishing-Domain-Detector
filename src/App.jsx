@@ -22,7 +22,7 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/scan" element={<ManualScan />} />
           <Route path="/history" element={<ScanHistory />} />
-          <Route path="/result" element={<ScanResult />} />
+          <Route path="/review/:id" element={<ScanResult />} />
         </Route>
       </Routes>
     </BrowserRouter>
