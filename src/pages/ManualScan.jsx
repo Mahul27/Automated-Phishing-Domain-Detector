@@ -13,25 +13,43 @@ export default function ManualScan() {
     e.preventDefault();
     setError("");
     
-    if (!domain.trim()) {
-      setError("Please enter a valid domain.");
+    let input = domain;
+
+    if (!input) {
+      setError("Please enter a domain name.");
       return;
     }
 
-    // Basic domain validation regex
-    const domainRegex = /^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    if (!domainRegex.test(domain.trim())) {
-      setError("Invalid format. Please enter a valid domain (e.g. google.com).");
+    if (/\s/.test(input)) {
+      setError("The domain cannot contain spaces.");
       return;
     }
 
+    // Extract domain from full URL if necessary
+    input = input.replace(/^https?:\/\//i, '');
+    input = input.split('/')[0].split('?')[0];
+
+    // Check for invalid characters
+    if (/[^a-zA-Z0-9.-]/.test(input)) {
+      setError("Invalid characters. A domain normally contains letters, numbers, dots, and hyphens.");
+      return;
+    }
+
+    // Check for missing domain extension
+    if (!/\.[a-zA-Z]{2,}$/.test(input)) {
+      setError("Please enter a complete domain such as google.com.");
+      return;
+    }
+
+    // Update input box to show the cleaned domain
+    setDomain(input);
     setLoading(true);
 
     // Simulate backend loading delay
     setTimeout(() => {
       // Find matching domain in mock data
       const matchedRecord = demoData.find(
-        (record) => record.domain.toLowerCase() === domain.trim().toLowerCase()
+        (record) => record.domain.toLowerCase() === input.toLowerCase()
       );
 
       setLoading(false);
