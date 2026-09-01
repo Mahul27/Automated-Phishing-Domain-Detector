@@ -57,8 +57,7 @@ export default function ManualScan() {
       if (matchedRecord) {
         navigate(`/review/${matchedRecord.id}`);
       } else {
-        // Fallback to record ID 1 if not found in demo data
-        navigate(`/review/1`);
+        setError("This domain is not available in the prototype data. Try google.com or paypal-secure-login-update.com.");
       }
     }, 1500); // 1.5 seconds loading state
   };
