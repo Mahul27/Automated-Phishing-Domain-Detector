@@ -16,7 +16,8 @@ def ssl_certificate_age(url):
     
     context = ssl.create_default_context()
 
-    try:
+    # Retrieve the SSL certificate from the domain
+      try:
         with socket.create_connection((domain_name, PORT), timeout=CONNECT_TIMEOUT) as sock:  # Opening up a connections to the domain on port 443 
             with context.wrap_socket(sock, server_hostname=domain_name) as ssock: # Ensuring we have a seucre tls connection so that the domain can return the ssl certificate
                 cert = ssock.getpeercert() 
@@ -27,12 +28,20 @@ def ssl_certificate_age(url):
     crt_date_issue_str = cert.get("IssueDate") # Pulling the certificate issue date
     if not crt_date_issue_str: #if the IssueDate is not found (function)  
         print(f" {domain_name}: 'IssueDate' field not found in certificate.") #If the certificate is not found then this line is printed as a failed connection to the user
-        return -1 #Display -1 if not found
+        return -1 #Return -1 to indicate that the SSL certificate age could not be determined due to missing IssueDate field
 
+    # Parse the issue date string into a datetime object
+    try: 
+        crt_date_issue = datetime.strptime(crt_date_issue_str, "%b %d %H:%M:%S %Y %Z") #Formate the date string into a datetime object
+       crt_date_issue = crt_date_issue.replace(tzinfo=timezone.utc) #Have the datetime object in UTC timezone
+    except ValueError as ve:
+        print(f" {domain_name}: Date parsing error: {ve}") #If the date string is not in the expected format, print an error message
+        return -1 #Return -1 to indicate that the SSL certificate age could not be determined due to date parsing error
 
-# Next function will be to convert it to a datetime object and calculate the age of the certificate in days
-#....
-
+    # Calculate the age of the SSL certificate in days
+    age_days = (datetime.now(timezone.utc) - crt_date_issue).days #Calculate the difference between the current date and the certificate issue date in days
+    print(f" {domain_name}: SSL certificate age is {age_days} days.")# Print the domain name and the calculated SSL certificate age in days
+    return max(age_days, 0) #Return the SSL certificate age in days, ensuring it's not negative
 
 df["SSL_Cert_Age_Days"] = ssl_certificate_ages  # Add the SSL certificate age to the DataFrame
 
