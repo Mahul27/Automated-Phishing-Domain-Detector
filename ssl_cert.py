@@ -14,6 +14,8 @@ def ssl_certificate_age(url):
     extracted = tldextract.extract(str(url))
     domain_name = f"{extracted.domain}.{extracted.suffix}"  # Get the main domain part with TLD
     
+    context = ssl.create_default_context()
 
+ 
 
                 
