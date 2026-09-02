@@ -17,7 +17,7 @@ def ssl_certificate_age(url):
     context = ssl.create_default_context()
 
     # Retrieve the SSL certificate from the domain
-      try:
+    try:
         with socket.create_connection((domain_name, PORT), timeout=CONNECT_TIMEOUT) as sock:  # Opening up a connections to the domain on port 443 
             with context.wrap_socket(sock, server_hostname=domain_name) as ssock: # Ensuring we have a seucre tls connection so that the domain can return the ssl certificate
                 cert = ssock.getpeercert() 
@@ -25,15 +25,15 @@ def ssl_certificate_age(url):
         print(f" {domain_name}: Connection failed: {e}") # This will print the domain name and the error message if the connection fails
         return -1 #Return -1 to indicate that the SSL certificate age could not be determined
 
-    crt_date_issue_str = cert.get("IssueDate") # Pulling the certificate issue date
+    crt_date_issue_str = cert.get("notBefore") # Pulling the certificate issue date
     if not crt_date_issue_str: #if the IssueDate is not found (function)  
-        print(f" {domain_name}: 'IssueDate' field not found in certificate.") #If the certificate is not found then this line is printed as a failed connection to the user
+        print(f" {domain_name}: 'notBefore' field not found in certificate.") #If the certificate is not found then this line is printed as a failed connection to the user
         return -1 #Return -1 to indicate that the SSL certificate age could not be determined due to missing IssueDate field
 
     # Parse the issue date string into a datetime object
     try: 
         crt_date_issue = datetime.strptime(crt_date_issue_str, "%b %d %H:%M:%S %Y %Z") #Formate the date string into a datetime object
-       crt_date_issue = crt_date_issue.replace(tzinfo=timezone.utc) #Have the datetime object in UTC timezone
+        crt_date_issue = crt_date_issue.replace(tzinfo=timezone.utc) #Have the datetime object in UTC timezone
     except ValueError as ve:
         print(f" {domain_name}: Date parsing error: {ve}") #If the date string is not in the expected format, print an error message
         return -1 #Return -1 to indicate that the SSL certificate age could not be determined due to date parsing error
@@ -48,11 +48,11 @@ ssl_certificate_ages = []
 for i, url in enumerate(df["url"]): #This loop iterates through each URL in the DataFrame and calculates the SSL certificate age for each domain
     age = ssl_certificate_age(url) #Call the ssl_certificate_age function to get the SSL certificate age for the current domain
     ssl_certificate_ages.append(age) #Append the calculated SSL certificate age to the list
-    time.sleep(1)  # Sleep for 1 second to avoid overwhelming the server
+    time.sleep(3)  # Sleep for 3 second to avoid overwhelming the server
 
 df["SSL_Cert_Age_Days"] = ssl_certificate_ages  # Add the SSL certificate age to the DataFrame
 
-df.to_csv('SSL_Cert_Age_data.csv', index=False)  # Save the updated DataFrame to a new CSV file
+df.to_csv('New_SSL_Cert_Age_data.csv', index=False)  # Save the updated DataFrame to a new CSV file
 
 print(f"\nSaved: SSL_Cert_Age_data.csv with the SSL certificate age for the 1000 domains.")
 
