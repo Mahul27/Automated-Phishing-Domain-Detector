@@ -16,6 +16,14 @@ def ssl_certificate_age(url):
     
     context = ssl.create_default_context()
 
- 
+# SSL Dev Start
+
+# SSL Dev End 
+df["SSL_Cert_Age_Days"] = ssl_certificate_ages  # Add the SSL certificate age to the DataFrame
+
+df.to_csv('SSL_Cert_Age_data.csv', index=False)  # Save the updated DataFrame to a new CSV file
+
+print(f"\nSaved: SSL_Cert_Age_data.csv with the SSL certificate age for the 1000 domains.")
+
 
                 
