@@ -21,4 +21,10 @@ print(f"Testing set size:", X_test.shape)
 print(y_train.value_counts())
 print(y_test.value_counts())
 
+# Save the training and testing sets to CSV files for later use
+X_train.to_csv('X_train.csv', index=False) #X_train.csv contains the features for the training set, without the index column
+X_test.to_csv('X_test.csv', index=False) #X_test.csv contains the features for the testing set, without the index column
+y_train.to_csv('y_train.csv', index=False)#y_train.csv contains the labels for the training set, without the index column
+y_test.to_csv('y_test.csv', index=False)#y_test.csv contains the labels for the testing set, without the index column
 
+print("Saved: DataSplit(80:20)Dataset.csv")
