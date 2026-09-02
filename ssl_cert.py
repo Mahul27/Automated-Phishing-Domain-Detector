@@ -43,6 +43,13 @@ def ssl_certificate_age(url):
     print(f" {domain_name}: SSL certificate age is {age_days} days.")# Print the domain name and the calculated SSL certificate age in days
     return max(age_days, 0) #Return the SSL certificate age in days, ensuring it's not negative
 
+# Loop through the DataFrame and calculate the SSL certificate age for each domain
+ssl_certificate_ages = [] 
+for i, url in enumerate(df["url"]): #This loop iterates through each URL in the DataFrame and calculates the SSL certificate age for each domain
+    age = ssl_certificate_age(url) #Call the ssl_certificate_age function to get the SSL certificate age for the current domain
+    ssl_certificate_ages.append(age) #Append the calculated SSL certificate age to the list
+    time.sleep(1)  # Sleep for 1 second to avoid overwhelming the server
+
 df["SSL_Cert_Age_Days"] = ssl_certificate_ages  # Add the SSL certificate age to the DataFrame
 
 df.to_csv('SSL_Cert_Age_data.csv', index=False)  # Save the updated DataFrame to a new CSV file
