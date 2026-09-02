@@ -11,8 +11,8 @@ CONNECT_TIMEOUT = 5  # seconds
 PORT = 443  # Default port for HTTPS
 
 def ssl_certificate_age(url):
-    extracted = tldextract.extract(str(url))
-    domain_name = f"{extracted.domain}.{extracted.suffix}"  # Get the main domain part with TLD
+    extracted = tldextract.extract(str(url))#Extract the domain name and TLD from the URL using tldextract
+    domain_name = f"{extracted.domain}.{extracted.suffix}"  # Reconstruct the domain name from the extracted components
     
     context = ssl.create_default_context()
 
