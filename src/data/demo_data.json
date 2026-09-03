@@ -13,7 +13,11 @@
     "ssl_cert_age": "1 day",
     "tld": ".com",
     "risk_score": 92,
-    "prediction": "Phishing"
+    "prediction": "Phishing",
+    "scan_time": "2026-08-31T10:30:00Z",
+    "review_status": "Completed",
+    "decision": "Confirmed Phishing",
+    "source": "Manual Scan"
   },
   {
     "id": 2,
@@ -29,7 +33,11 @@
     "ssl_cert_age": "5 years",
     "tld": ".com",
     "risk_score": 2,
-    "prediction": "Legitimate"
+    "prediction": "Legitimate",
+    "scan_time": "2026-08-31T11:15:00Z",
+    "review_status": "Completed",
+    "decision": "False Positive",
+    "source": "Manual Scan"
   },
   {
     "id": 3,
@@ -45,7 +53,11 @@
     "ssl_cert_age": "3 days",
     "tld": ".com",
     "risk_score": 88,
-    "prediction": "Phishing"
+    "prediction": "Phishing",
+    "scan_time": "2026-08-31T14:45:00Z",
+    "review_status": "Investigating",
+    "decision": "Suspicious",
+    "source": "Manual Scan"
   },
   {
     "id": 4,
@@ -61,7 +73,11 @@
     "ssl_cert_age": "1 week",
     "tld": ".net",
     "risk_score": 85,
-    "prediction": "Phishing"
+    "prediction": "Phishing",
+    "scan_time": "2026-08-31T16:20:00Z",
+    "review_status": "Pending",
+    "decision": "Unreviewed",
+    "source": "Manual Scan"
   },
   {
     "id": 5,
@@ -77,7 +93,11 @@
     "ssl_cert_age": "3 years",
     "tld": ".com",
     "risk_score": 1,
-    "prediction": "Legitimate"
+    "prediction": "Legitimate",
+    "scan_time": "2026-09-01T08:05:00Z",
+    "review_status": "Completed",
+    "decision": "False Positive",
+    "source": "Manual Scan"
   },
   {
     "id": 6,
@@ -93,7 +113,11 @@
     "ssl_cert_age": "1 day",
     "tld": ".xyz",
     "risk_score": 75,
-    "prediction": "Phishing"
+    "prediction": "Phishing",
+    "scan_time": "2026-09-01T09:40:00Z",
+    "review_status": "Investigating",
+    "decision": "Suspicious",
+    "source": "Manual Scan"
   },
   {
     "id": 7,
@@ -109,7 +133,11 @@
     "ssl_cert_age": "1 month",
     "tld": ".com",
     "risk_score": 95,
-    "prediction": "Phishing"
+    "prediction": "Phishing",
+    "scan_time": "2026-09-01T11:10:00Z",
+    "review_status": "Completed",
+    "decision": "Confirmed Phishing",
+    "source": "Manual Scan"
   },
   {
     "id": 8,
@@ -125,7 +153,11 @@
     "ssl_cert_age": "4 years",
     "tld": ".com",
     "risk_score": 3,
-    "prediction": "Legitimate"
+    "prediction": "Legitimate",
+    "scan_time": "2026-09-01T13:25:00Z",
+    "review_status": "Pending",
+    "decision": "Unreviewed",
+    "source": "Manual Scan"
   },
   {
     "id": 9,
@@ -141,7 +173,11 @@
     "ssl_cert_age": "2 days",
     "tld": ".info",
     "risk_score": 90,
-    "prediction": "Phishing"
+    "prediction": "Phishing",
+    "scan_time": "2026-09-02T10:15:00Z",
+    "review_status": "Pending",
+    "decision": "Unreviewed",
+    "source": "Manual Scan"
   },
   {
     "id": 10,
@@ -157,6 +193,10 @@
     "ssl_cert_age": "10 days",
     "tld": ".com",
     "risk_score": 89,
-    "prediction": "Phishing"
+    "prediction": "Phishing",
+    "scan_time": "2026-09-02T15:50:00Z",
+    "review_status": "Investigating",
+    "decision": "Confirmed Phishing",
+    "source": "Manual Scan"
   }
 ]

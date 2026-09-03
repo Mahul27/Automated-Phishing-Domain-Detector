@@ -2,7 +2,7 @@ import { NavLink, Link, useLocation } from "react-router-dom";
 
 export default function Sidebar() {
   const location = useLocation();
-  const isReviewPage = location.pathname.startsWith('/review');
+  const isReviewPage = location.pathname.startsWith("/review");
 
   return (
     <aside className="sidebar">
