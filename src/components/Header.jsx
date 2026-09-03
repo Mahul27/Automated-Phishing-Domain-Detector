@@ -1,9 +1,10 @@
-export default function Header({ title, subtitle }) {
+export default function Header({ title, subtitle, tag, noBorder = false }) {
   const activeUser = localStorage.getItem('activeUser') || 'Logged in';
 
   return (
-    <div className="header-row">
+    <div className={`header-row ${noBorder ? 'no-border' : ''}`}>
       <div className="header-title">
+        {tag && <div className="header-tag">{tag}</div>}
         <h1>{title}</h1>
         {subtitle && <p>{subtitle}</p>}
       </div>

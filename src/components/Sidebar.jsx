@@ -31,6 +31,16 @@ export default function Sidebar() {
           </li>
           <li>
             <NavLink
+              to="/upload"
+              className={({ isActive }) =>
+                isActive ? "nav-item active" : "nav-item"
+              }
+            >
+              Data Upload
+            </NavLink>
+          </li>
+          <li>
+            <NavLink
               to="/history"
               className={({ isActive }) =>
                 isActive ? "nav-item active" : "nav-item"
