@@ -209,3 +209,21 @@ body {
     justify-content: center;
     align-items: center;
 }
+
+/* HEADER EXTENSIONS */
+.header-tag {
+    display: block;
+    font-size: 13px;
+    color: #4f685c;
+    font-weight: 500;
+    margin-bottom: 4px;
+    letter-spacing: 0.2px;
+}
+
+.header-row.no-border {
+    border-bottom: none;
+    margin-bottom: 20px;
+    padding-bottom: 0;
+}
+
+

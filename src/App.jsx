@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import ManualScan from './pages/ManualScan';
 import ScanHistory from './pages/ScanHistory';
 import ScanResult from './pages/ScanResult';
+import DataUpload from './pages/DataUpload';
 import Layout from './components/Layout';
 import './index.css';
 
@@ -21,6 +22,7 @@ function App() {
         <Route element={<Layout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/scan" element={<ManualScan />} />
+          <Route path="/upload" element={<DataUpload />} />
           <Route path="/history" element={<ScanHistory />} />
           <Route path="/review/:id" element={<ScanResult />} />
         </Route>

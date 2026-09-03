@@ -1,6 +1,9 @@
-import { NavLink, Link } from "react-router-dom";
+import { NavLink, Link, useLocation } from "react-router-dom";
 
 export default function Sidebar() {
+  const location = useLocation();
+  const isReviewPage = location.pathname.startsWith("/review");
+
   return (
     <aside className="sidebar">
       <div>
@@ -28,6 +31,16 @@ export default function Sidebar() {
           </li>
           <li>
             <NavLink
+              to="/upload"
+              className={({ isActive }) =>
+                isActive ? "nav-item active" : "nav-item"
+              }
+            >
+              Data Upload
+            </NavLink>
+          </li>
+          <li>
+            <NavLink
               to="/history"
               className={({ isActive }) =>
                 isActive ? "nav-item active" : "nav-item"
@@ -36,16 +49,18 @@ export default function Sidebar() {
               History
             </NavLink>
           </li>
-          <li>
-            <NavLink
-              to="/review/1"
-              className={({ isActive }) =>
-                isActive ? "nav-item active" : "nav-item"
-              }
-            >
-              Scan Result
-            </NavLink>
-          </li>
+          {isReviewPage && (
+            <li>
+              <NavLink
+                to={location.pathname}
+                className={({ isActive }) =>
+                  isActive ? "nav-item active" : "nav-item"
+                }
+              >
+                Scan Result
+              </NavLink>
+            </li>
+          )}
         </ul>
       </div>
 
