@@ -222,7 +222,7 @@ export default function DataUpload() {
   };
 
   const handleScanRecord = (domain) => {
-    navigate('/scan', { state: { domain } });
+    navigate("/scan", { state: { domain } });
   };
 
   const handleReset = () => {
