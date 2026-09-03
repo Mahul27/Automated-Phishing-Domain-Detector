@@ -33,7 +33,8 @@ export default function DataUpload() {
   const processFile = (file) => {
     setError("");
     const isCSV = file.name.endsWith(".csv") || file.type === "text/csv";
-    const isJSON = file.name.endsWith(".json") || file.type === "application/json";
+    const isJSON =
+      file.name.endsWith(".json") || file.type === "application/json";
 
     if (!isCSV && !isJSON) {
       setError("Unsupported file format. Please upload a .csv or .json file.");
@@ -75,21 +76,33 @@ export default function DataUpload() {
   };
 
   const parseCSV = (content) => {
-    const lines = content.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    const lines = content
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean);
     if (lines.length === 0) return [];
 
     let headerIndex = -1;
-    const headerRow = lines[0].split(",").map((col) => col.trim().replace(/^["']|["']$/g, "").toLowerCase());
-    
+    const headerRow = lines[0].split(",").map((col) =>
+      col
+        .trim()
+        .replace(/^["']|["']$/g, "")
+        .toLowerCase(),
+    );
+
     // Check for 'url' or 'domain' header
-    headerIndex = headerRow.findIndex((col) => col === "url" || col === "domain" || col.includes("url"));
+    headerIndex = headerRow.findIndex(
+      (col) => col === "url" || col === "domain" || col.includes("url"),
+    );
 
     const dataRows = headerIndex !== -1 ? lines.slice(1) : lines;
     const colToUse = headerIndex !== -1 ? headerIndex : 0;
 
     const urls = [];
     dataRows.forEach((row, idx) => {
-      const cols = row.split(",").map((c) => c.trim().replace(/^["']|["']$/g, ""));
+      const cols = row
+        .split(",")
+        .map((c) => c.trim().replace(/^["']|["']$/g, ""));
       const rawUrl = cols[colToUse];
       if (rawUrl) {
         const clean = cleanUrl(rawUrl);
@@ -115,7 +128,9 @@ export default function DataUpload() {
     if (Array.isArray(data)) {
       list = data;
     } else if (data && typeof data === "object") {
-      const possibleArray = Object.values(data).find((val) => Array.isArray(val));
+      const possibleArray = Object.values(data).find((val) =>
+        Array.isArray(val),
+      );
       if (possibleArray) {
         list = possibleArray;
       } else {
@@ -129,7 +144,13 @@ export default function DataUpload() {
       if (typeof item === "string") {
         rawUrl = item;
       } else if (item && typeof item === "object") {
-        rawUrl = item.url || item.domain || item.URL || item.Domain || Object.values(item)[0] || "";
+        rawUrl =
+          item.url ||
+          item.domain ||
+          item.URL ||
+          item.Domain ||
+          Object.values(item)[0] ||
+          "";
       }
 
       if (rawUrl && typeof rawUrl === "string") {
@@ -160,9 +181,48 @@ export default function DataUpload() {
     return /^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(domain);
   };
 
+  const loadSampleCSV = () => {
+    const sample = `url\npaypal-account-update.info\nsafe-banking-verify.com\napple-id-recovery.net\nlegitimate-site.org\nmicro-secure-login.xyz`;
+    const parsed = parseCSV(sample);
+    setFileName("sample_domains.csv");
+    setFileSize("145 B");
+    setRecords(parsed);
+    setFileData({
+      name: "sample_domains.csv",
+      totalCount: parsed.length,
+      appliedCount: parsed.length,
+      type: "CSV",
+    });
+    setError("");
+  };
+
+  const loadSampleJSON = () => {
+    const sample = JSON.stringify(
+      [
+        { url: "chase-auth-service.com" },
+        { url: "github-enterprise-login.net" },
+        { url: "amazon-prime-alert.xyz" },
+        { url: "google-workspace-verify.info" },
+        { url: "bank-portal-security.org" },
+      ],
+      null,
+      2,
+    );
+    const parsed = parseJSON(sample);
+    setFileName("sample_feed.json");
+    setFileSize("210 B");
+    setRecords(parsed);
+    setFileData({
+      name: "sample_feed.json",
+      totalCount: parsed.length,
+      appliedCount: parsed.length,
+      type: "JSON",
+    });
+    setError("");
+  };
 
   const handleScanRecord = (domain) => {
-    navigate(`/scan`);
+    navigate('/scan', { state: { domain } });
   };
 
   const handleReset = () => {
@@ -180,7 +240,7 @@ export default function DataUpload() {
   const filteredRecords = records.filter(
     (r) =>
       r.domain.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.original.toLowerCase().includes(searchTerm.toLowerCase())
+      r.original.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   return (
@@ -196,8 +256,16 @@ export default function DataUpload() {
         <>
           <section className="scan-box">
             <h2>Choose a CSV or JSON file</h2>
-            <p>Files are parsed locally in your browser. This demo accepts up to 1,000 URL records at a time.</p>
-            <p><strong>CSV:</strong> 1st row header "url", then one URL per line.<br/><strong>JSON:</strong> Array of objects containing a "url" property.</p>
+            <p>
+              Files are parsed locally in your browser. This demo accepts up to
+              1,000 URL records at a time.
+            </p>
+            <p>
+              <strong>CSV:</strong> 1st row header "url", then one URL per line.
+              <br />
+              <strong>JSON:</strong> Array of objects containing a "url"
+              property.
+            </p>
             <input
               ref={fileInputRef}
               type="file"
@@ -209,7 +277,11 @@ export default function DataUpload() {
               type="button"
               className="btn-manual-scan"
               onClick={handleBrowseClick}
-              style={{ cursor: "pointer", display: "inline-block", marginTop: "10px" }}
+              style={{
+                cursor: "pointer",
+                display: "inline-block",
+                marginTop: "10px",
+              }}
             >
               BROWSE FILES
             </button>
@@ -220,8 +292,21 @@ export default function DataUpload() {
           <section className="state-boxes" style={{ marginBottom: "20px" }}>
             <div className="state-box">
               <strong>{fileName}</strong>
-              <p>Type: {fileData.type} | Size: {fileSize} | Records parsed: {records.length}</p>
-              <button className="btn-manual-scan" onClick={handleReset} style={{ cursor: "pointer", display: "inline-block", marginTop: "10px" }}>UPLOAD DIFFERENT FILE</button>
+              <p>
+                Type: {fileData.type} | Size: {fileSize} | Records parsed:{" "}
+                {records.length}
+              </p>
+              <button
+                className="btn-manual-scan"
+                onClick={handleReset}
+                style={{
+                  cursor: "pointer",
+                  display: "inline-block",
+                  marginTop: "10px",
+                }}
+              >
+                UPLOAD DIFFERENT FILE
+              </button>
             </div>
           </section>
 
@@ -233,11 +318,22 @@ export default function DataUpload() {
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{ width: "250px", padding: "5px" }}
             />
-            <span style={{ fontSize: "14px", lineHeight: "30px" }}>Showing {filteredRecords.length} of {records.length} records</span>
+            <span style={{ fontSize: "14px", lineHeight: "30px" }}>
+              Showing {filteredRecords.length} of {records.length} records
+            </span>
           </section>
 
-          <section className="history-box" style={{ overflowX: "auto", padding: "10px", borderTop: "none" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+          <section
+            className="history-box"
+            style={{ overflowX: "auto", padding: "10px", borderTop: "none" }}
+          >
+            <table
+              style={{
+                width: "100%",
+                borderCollapse: "collapse",
+                textAlign: "left",
+              }}
+            >
               <thead>
                 <tr style={{ borderBottom: "1px solid black" }}>
                   <th style={{ padding: "8px" }}>#</th>
@@ -252,17 +348,28 @@ export default function DataUpload() {
                 {filteredRecords.map((item) => (
                   <tr key={item.id} style={{ borderBottom: "1px dotted #ccc" }}>
                     <td style={{ padding: "8px" }}>{item.id}</td>
-                    <td style={{ padding: "8px", fontWeight: "bold" }}>{item.domain}</td>
+                    <td style={{ padding: "8px", fontWeight: "bold" }}>
+                      {item.domain}
+                    </td>
                     <td style={{ padding: "8px" }}>{item.original}</td>
                     <td style={{ padding: "8px" }}>{item.length} chars</td>
-                    <td style={{ padding: "8px", color: item.valid ? "green" : "red" }}>
+                    <td
+                      style={{
+                        padding: "8px",
+                        color: item.valid ? "green" : "red",
+                      }}
+                    >
                       {item.valid ? "Valid Format" : "Needs Review"}
                     </td>
                     <td style={{ padding: "8px" }}>
                       <button
                         className="btn-manual-scan"
                         onClick={() => handleScanRecord(item.domain)}
-                        style={{ padding: "2px 8px", cursor: "pointer", fontSize: "12px" }}
+                        style={{
+                          padding: "2px 8px",
+                          cursor: "pointer",
+                          fontSize: "12px",
+                        }}
                       >
                         INSPECT
                       </button>

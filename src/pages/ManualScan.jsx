@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../components/Header";
 import demoData from "../data/demo_data.json";
 
 export default function ManualScan() {
-  const [domain, setDomain] = useState("");
+  const location = useLocation();
+  const [domain, setDomain] = useState(location.state?.domain || "");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
