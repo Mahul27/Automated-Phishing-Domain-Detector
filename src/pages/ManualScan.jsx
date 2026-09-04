@@ -13,7 +13,7 @@ export default function ManualScan() {
   const handleSubmit = (e) => {
     e.preventDefault();
     setError("");
-    
+
     let input = domain;
 
     if (!input) {
@@ -27,12 +27,14 @@ export default function ManualScan() {
     }
 
     // Extract domain from full URL if necessary
-    input = input.replace(/^https?:\/\//i, '');
-    input = input.split('/')[0].split('?')[0];
+    input = input.replace(/^https?:\/\//i, "");
+    input = input.split("/")[0].split("?")[0];
 
     // Check for invalid characters
     if (/[^a-zA-Z0-9.-]/.test(input)) {
-      setError("Invalid characters. A domain normally contains letters, numbers, dots, and hyphens.");
+      setError(
+        "Invalid characters. A domain normally contains letters, numbers, dots, and hyphens.",
+      );
       return;
     }
 
@@ -50,7 +52,7 @@ export default function ManualScan() {
     setTimeout(() => {
       // Find matching domain in mock data
       const matchedRecord = demoData.find(
-        (record) => record.domain.toLowerCase() === input.toLowerCase()
+        (record) => record.domain.toLowerCase() === input.toLowerCase(),
       );
 
       setLoading(false);
@@ -58,16 +60,16 @@ export default function ManualScan() {
       if (matchedRecord) {
         navigate(`/review/${matchedRecord.id}`);
       } else {
-        setError("This domain is not available in the prototype data. Try google.com or paypal-secure-login-update.com.");
+        setError("This domain is not available in the data.");
       }
     }, 1500); // 1.5 seconds loading state
   };
 
   return (
     <>
-      <Header 
-        title="Manual Domain Scan" 
-        subtitle="Paste any domain to request a risk score and explainability result." 
+      <Header
+        title="Manual Domain Scan"
+        subtitle="Paste any domain to request a risk score and explainability result."
       />
 
       <section className="scan-box">
@@ -75,9 +77,9 @@ export default function ManualScan() {
         <form className="scan-input-group" onSubmit={handleSubmit}>
           <label htmlFor="domain-input">Domain name or URL</label>
           <div className="scan-input-row">
-            <input 
+            <input
               id="domain-input"
-              type="text" 
+              type="text"
               value={domain}
               onChange={(e) => setDomain(e.target.value)}
               placeholder="Enter a domain, for example: google.com"
@@ -95,7 +97,7 @@ export default function ManualScan() {
                 padding: "10px 24px",
                 boxSizing: "border-box",
                 cursor: loading ? "not-allowed" : "pointer",
-                opacity: loading ? 0.7 : 1
+                opacity: loading ? 0.7 : 1,
               }}
             >
               {loading ? "SCANNING..." : "SCAN DOMAIN"}

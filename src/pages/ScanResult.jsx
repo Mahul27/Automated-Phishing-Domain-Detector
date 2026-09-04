@@ -316,6 +316,64 @@ export default function ScanResult() {
           </tbody>
         </table>
       </section>
+
+      {/* 3. Human Decision */}
+      <section
+        style={{
+          border: "1px solid black",
+          padding: "20px",
+          marginBottom: "20px",
+          backgroundColor: "#fff",
+        }}
+      >
+        <h2 style={{ color: "#d9534f", marginBottom: "10px", marginTop: 0 }}>
+          Human decision required
+        </h2>
+        <p style={{ marginBottom: "5px" }}>
+          This score are not confirmed yet please wait for the analyst to review
+          it
+        </p>
+        <p style={{ marginBottom: "20px" }}>
+          Review the evidence before recording a final decision.
+        </p>
+
+        <div style={{ display: "flex", gap: "15px" }}>
+          <button
+            onClick={() => {
+              alert("Marked as false positive");
+              navigate("/history");
+            }}
+            style={{
+              padding: "10px 20px",
+              cursor: "pointer",
+              backgroundColor: "#f0ad4e",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              fontWeight: "bold",
+            }}
+          >
+            Mark false positive
+          </button>
+          <button
+            onClick={() => {
+              alert("Confirmed as phishing");
+              navigate("/history");
+            }}
+            style={{
+              padding: "10px 20px",
+              cursor: "pointer",
+              backgroundColor: "#d9534f",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              fontWeight: "bold",
+            }}
+          >
+            Confirm phishing
+          </button>
+        </div>
+      </section>
     </>
   );
 }
