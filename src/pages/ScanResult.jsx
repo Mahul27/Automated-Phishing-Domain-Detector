@@ -1,6 +1,7 @@
 import Header from "../components/Header";
 import { useParams, useNavigate } from "react-router-dom";
 import demoData from "../data/demo_data.json";
+import { getRiskColor } from "../utils/risk";
 
 export default function ScanResult() {
   const { id } = useParams();
@@ -8,6 +9,22 @@ export default function ScanResult() {
 
   // Find the specific record from demo data, or fallback to the first one
   const record = demoData.find((r) => r.id === parseInt(id)) || demoData[0];
+
+  const handleDecision = (isPhishing) => {
+    record.review_status = "Completed";
+    record.decision = isPhishing ? "Confirmed Phishing" : "False Positive";
+    record.reviewer = "Current Analyst";
+    record.review_date = new Date().toISOString().split("T")[0];
+
+    if (!isPhishing) {
+      record.prediction = "Safe";
+      record.risk_score = 0;
+    } else {
+      record.prediction = "Phishing";
+    }
+
+    navigate("/history");
+  };
 
   return (
     <>
@@ -51,7 +68,7 @@ export default function ScanResult() {
             <strong>Risk Score:</strong>{" "}
             <span
               style={{
-                color: record.risk_score > 50 ? "red" : "green",
+                color: getRiskColor(record.risk_score),
                 fontWeight: "bold",
               }}
             >
@@ -62,13 +79,29 @@ export default function ScanResult() {
             <strong>Prediction:</strong>{" "}
             <span
               style={{
-                color: record.risk_score > 50 ? "red" : "green",
+                color: getRiskColor(record.risk_score),
                 fontWeight: "bold",
               }}
             >
               {record.prediction}
             </span>
           </li>
+          {record.review_status === "Completed" && (
+            <>
+              <li style={{ marginBottom: "10px" }}>
+                <strong>Review Status:</strong> <span>{record.review_status}</span>
+              </li>
+              <li style={{ marginBottom: "10px" }}>
+                <strong>Decision:</strong> <span>{record.decision}</span>
+              </li>
+              <li style={{ marginBottom: "10px" }}>
+                <strong>Reviewer:</strong> <span>{record.reviewer}</span>
+              </li>
+              <li style={{ marginBottom: "10px" }}>
+                <strong>Review Date:</strong> <span>{record.review_date}</span>
+              </li>
+            </>
+          )}
         </ul>
       </section>
 
@@ -326,53 +359,61 @@ export default function ScanResult() {
           backgroundColor: "#fff",
         }}
       >
-        <h2 style={{ color: "#d9534f", marginBottom: "10px", marginTop: 0 }}>
-          Human decision required
-        </h2>
-        <p style={{ marginBottom: "5px" }}>
-          This score are not confirmed yet please wait for the analyst to review
-          it
-        </p>
-        <p style={{ marginBottom: "20px" }}>
-          Review the evidence before recording a final decision.
-        </p>
+        {record.review_status === "Completed" ? (
+          <div>
+            <h2 style={{ color: "green", marginBottom: "10px", marginTop: 0 }}>
+              Decision Recorded
+            </h2>
+            <p>
+              This scan was reviewed by <strong>{record.reviewer}</strong> on{" "}
+              <strong>{record.review_date}</strong>. The final decision was{" "}
+              <strong>{record.decision}</strong>.
+            </p>
+          </div>
+        ) : (
+          <>
+            <h2 style={{ color: "#d9534f", marginBottom: "10px", marginTop: 0 }}>
+              Human decision required
+            </h2>
+            <p style={{ marginBottom: "5px" }}>
+              This score is not confirmed yet. Please wait for the analyst to review it.
+            </p>
+            <p style={{ marginBottom: "20px" }}>
+              Review the evidence before recording a final decision.
+            </p>
 
-        <div style={{ display: "flex", gap: "15px" }}>
-          <button
-            onClick={() => {
-              alert("Marked as false positive");
-              navigate("/history");
-            }}
-            style={{
-              padding: "10px 20px",
-              cursor: "pointer",
-              backgroundColor: "#f0ad4e",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              fontWeight: "bold",
-            }}
-          >
-            Mark false positive
-          </button>
-          <button
-            onClick={() => {
-              alert("Confirmed as phishing");
-              navigate("/history");
-            }}
-            style={{
-              padding: "10px 20px",
-              cursor: "pointer",
-              backgroundColor: "#d9534f",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              fontWeight: "bold",
-            }}
-          >
-            Confirm phishing
-          </button>
-        </div>
+            <div style={{ display: "flex", gap: "15px" }}>
+              <button
+                onClick={() => handleDecision(false)}
+                style={{
+                  padding: "10px 20px",
+                  cursor: "pointer",
+                  backgroundColor: "#f0ad4e",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  fontWeight: "bold",
+                }}
+              >
+                Mark false positive
+              </button>
+              <button
+                onClick={() => handleDecision(true)}
+                style={{
+                  padding: "10px 20px",
+                  cursor: "pointer",
+                  backgroundColor: "#d9534f",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  fontWeight: "bold",
+                }}
+              >
+                Confirm phishing
+              </button>
+            </div>
+          </>
+        )}
       </section>
     </>
   );

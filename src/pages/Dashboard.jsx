@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import Header from "../components/Header";
 import demoData from "../data/demo_data.json";
+import { getRiskLevel } from "../utils/risk";
 
 export default function Dashboard() {
   const domainsMonitored = demoData.length;
@@ -15,10 +16,9 @@ export default function Dashboard() {
   ).length;
 
   const riskDistribution = {
-    Low: demoData.filter((d) => d.risk_score < 40).length,
-    Medium: demoData.filter((d) => d.risk_score >= 40 && d.risk_score < 75)
-      .length,
-    High: demoData.filter((d) => d.risk_score >= 75).length,
+    Low: demoData.filter((d) => getRiskLevel(d.risk_score) === "Low").length,
+    Medium: demoData.filter((d) => getRiskLevel(d.risk_score) === "Medium").length,
+    High: demoData.filter((d) => getRiskLevel(d.risk_score) === "High").length,
   };
 
   return (

@@ -2,6 +2,7 @@ import { useState } from "react";
 import Header from "../components/Header";
 import demoData from "../data/demo_data.json";
 import { useNavigate } from "react-router-dom";
+import { getRiskLevel, getRiskColor } from "../utils/risk";
 
 export default function ScanHistory() {
   const navigate = useNavigate();
@@ -17,10 +18,8 @@ export default function ScanHistory() {
     const matchesSearch = record.domain.toLowerCase().includes(searchTerm.toLowerCase());
     
     let matchesRisk = true;
-    if (riskFilter === "High Risk") {
-      matchesRisk = record.risk_score > 50;
-    } else if (riskFilter === "Low Risk") {
-      matchesRisk = record.risk_score <= 50;
+    if (riskFilter !== "All") {
+      matchesRisk = getRiskLevel(record.risk_score) === riskFilter;
     }
 
     return matchesSearch && matchesRisk;
@@ -47,8 +46,9 @@ export default function ScanHistory() {
           onChange={(e) => setRiskFilter(e.target.value)}
         >
           <option value="All">All Risk Levels</option>
-          <option value="High Risk">High Risk</option>
-          <option value="Low Risk">Low Risk</option>
+          <option value="High">High Risk</option>
+          <option value="Medium">Medium Risk</option>
+          <option value="Low">Low Risk</option>
         </select>
         <button 
           type="button" 
@@ -87,6 +87,8 @@ export default function ScanHistory() {
               <th style={{ padding: "12px" }}>TLD</th>
               <th style={{ padding: "12px" }}>Risk Score</th>
               <th style={{ padding: "12px" }}>Prediction</th>
+              <th style={{ padding: "12px" }}>Review Status</th>
+              <th style={{ padding: "12px" }}>Decision</th>
               <th style={{ padding: "12px" }}>Action</th>
             </tr>
           </thead>
@@ -102,7 +104,7 @@ export default function ScanHistory() {
                   <td
                     style={{
                       padding: "12px",
-                      color: record.risk_score > 50 ? "red" : "green",
+                      color: getRiskColor(record.risk_score),
                       fontWeight: "bold",
                     }}
                   >
@@ -111,12 +113,14 @@ export default function ScanHistory() {
                   <td
                     style={{
                       padding: "12px",
-                      color: record.risk_score > 50 ? "red" : "green",
+                      color: getRiskColor(record.risk_score),
                       fontWeight: "bold",
                     }}
                   >
                     {record.prediction}
                   </td>
+                  <td style={{ padding: "12px" }}>{record.review_status || "Pending"}</td>
+                  <td style={{ padding: "12px" }}>{record.decision || "-"}</td>
                   <td style={{ padding: "12px" }}>
                     <button
                       onClick={() => navigate(`/review/${record.id}`)}
@@ -136,7 +140,7 @@ export default function ScanHistory() {
               ))
             ) : (
               <tr>
-                <td colSpan="6" style={{ padding: "12px", textAlign: "center" }}>
+                <td colSpan="8" style={{ padding: "12px", textAlign: "center" }}>
                   No records found matching your filters.
                 </td>
               </tr>
