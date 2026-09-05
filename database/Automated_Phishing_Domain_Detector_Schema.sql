@@ -79,3 +79,54 @@ risk_score DECIMAL(5,2) NOT NULL,
 -- Checking the tables that are created now
 SHOW TABLES;
 
+-- ==================================================
+-- WEEK 8 DATABASE DEVELOPMENT --
+-- ==================================================
+
+-- Creating the domain_features table now
+CREATE TABLE IF NOT EXISTS domain_features (
+          feature_id INT NOT NULL AUTO_INCREMENT,
+          scan_id INT NOT NULL,
+          domain_age INT NULL,
+          registration_period INT NULL,
+          domain_length INT NOT NULL,
+          hyphen_count INT NOT NULL,
+          digit_count INT NOT NULL,
+          shannon_entropy DECIMAL(8,5) NOT NULL,
+          brand_keyword_detection TINYINT NOT NULL,
+          typosquatting_similarity DECIMAL (5,4) NOT NULL,
+          ssl_certificate_age INT NULL,
+          tld VARCHAR(63) NOT NULL,
+          
+          PRIMARY KEY (feature_id),
+          UNIQUE KEY uq_domain_features_scan_id (scan_id),
+          
+          CONSTRAINT fk_domain_features_scan
+          FOREIGN KEY (scan_id)
+          REFERENCES scan_results(scan_id)
+
+);
+
+
+ -- Creating the new table model_outputs table
+ CREATE TABLE IF NOT EXISTS model_outputs (
+     output_id INT NOT NULL AUTO_INCREMENT,
+     scan_id INT NOT NULL,
+     model_name VARCHAR(50) NOT NULL,
+     confidence_score DECIMAL(5,4) NOT NULL,
+     explanation TEXT NULL,
+     
+     PRIMARY KEY (output_id),
+     
+     CONSTRAINT fk_model_outputs_scan
+       FOREIGN KEY (scan_id)
+       REFERENCES scan_results(scan_id)
+       
+);
+
+-- Selecting the project database
+USE automated_phishing_detector;
+
+-- Checking that the all 5 project tables are available
+SHOW TABLES;
+
