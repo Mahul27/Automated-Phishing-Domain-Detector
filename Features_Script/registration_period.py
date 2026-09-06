@@ -4,16 +4,16 @@ import tldextract
 import requests
 from datetime import datetime
 
-# File locations
+# below code describes the File locations
 
 input_file = Path("../Dataset/Dataset_.csv")
 output_file = Path("../Dataset/Registration_Period_data.csv")
 
-# Read dataset
+# below code will Read dataset
 
 df = pd.read_csv(input_file)
 
-# Extract domain from URL
+# the below code Extract domain from URL
 
 def get_domain(url):
 
@@ -24,8 +24,7 @@ def get_domain(url):
 
     return extracted.domain
 
-# Get registration and expiration dates
-# using RDAP
+# below code Get the registration and expiration datesby using the RDAP
 
 def get_registration_period(url):
 
@@ -48,7 +47,7 @@ def get_registration_period(url):
         registration_date = None
         expiration_date = None
 
-        # Read RDAP events
+        # below code Reads RDAP events
         
         for event in data.get("events", []):
 
@@ -61,7 +60,7 @@ def get_registration_period(url):
             elif action == "expiration":
                 expiration_date = date
 
-            # Check if both dates exist
+            # Check if both the dates exist or not using if statment
     
 
         if not registration_date or not expiration_date:

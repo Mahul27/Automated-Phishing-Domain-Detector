@@ -4,16 +4,16 @@ import tldextract
 import math
 from collections import Counter
 
-# File locations
+# Below code is to describe the File locations
 
 input_file = Path("../Dataset/Dataset_.csv")
 output_file = Path("../Dataset/Shannon_Entropy_data.csv")
 
-# Read dataset
+# below will be used to read the dataset
 
 df = pd.read_csv(input_file)
 
-# Extract domain from URL
+# below will be used to extract the domain from URL
 
 def get_domain(url):
     extracted = tldextract.extract(str(url))
@@ -23,7 +23,7 @@ def get_domain(url):
 
     return extracted.domain
 
-# Calculate Shannon Entropy
+# below is the code to calculate Shannon Entropy
 
 def calculate_entropy(domain):
 
@@ -43,17 +43,17 @@ def calculate_entropy(domain):
 
     return entropy
 
-# Apply feature extraction
+# below is thee code to Apply feature extraction
 
 df["Shannon_Entropy"] = df["url"].apply(
     lambda url: calculate_entropy(get_domain(url))
 )
 
-# Display results
+# below code will be used to display the results
 
 print(df[["url", "Shannon_Entropy"]])
 
-# Save result
+# This code will Save the result in CSV file in the designated folder
 
 df.to_csv(output_file, index=False)
 

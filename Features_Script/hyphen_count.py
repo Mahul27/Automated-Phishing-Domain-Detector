@@ -1,42 +1,38 @@
 import pandas as pd
 from pathlib import Path
-import tldextract
+from urllib.parse import urlparse
+
 
 # File locations
-
 input_file = Path("../Dataset/Dataset_.csv")
-output_file = Path("../Dataset/Hyphen_Count_data.csv")
+output_file = Path("../Dataset/Number_of_Hyphens_data.csv")
 
-# Read dataset
 
+# Read the dataset
 df = pd.read_csv(input_file)
 
-# Extract domain from URL
 
-def get_domain(url):
-    extracted = tldextract.extract(str(url))
+# Extract hostname from URL
+def get_hostname(url):
+    parsed_url = urlparse(str(url))
+    return parsed_url.hostname or ""
 
-    if extracted.domain and extracted.suffix:
-        return f"{extracted.domain}.{extracted.suffix}"
 
-    return extracted.domain
-
-# Count hyphens
-
+# Count the number of hyphens
 def get_hyphen_count(url):
-    domain = get_domain(url)
-    return domain.count("-")
+    hostname = get_hostname(url)
+    return hostname.count("-")
 
-# Apply feature extraction
 
+# Apply the feature to every URL
 df["Number_of_Hyphens"] = df["url"].apply(get_hyphen_count)
 
-# Display results
 
+# Display results
 print(df[["url", "Number_of_Hyphens"]])
 
-# Save result
 
+# Save the results
 df.to_csv(output_file, index=False)
 
-print("\nSaved: Hyphen_Count_data.csv")
+print("\nSaved: Number_of_Hyphens_data.csv")
