@@ -16,7 +16,17 @@ export default function Sidebar() {
                 isActive ? "nav-item active" : "nav-item"
               }
             >
-              Dashboard
+              Live dashboard
+            </NavLink>
+          </li>
+          <li>
+            <NavLink
+              to="/queue"
+              className={({ isActive }) =>
+                isActive ? "nav-item active" : "nav-item"
+              }
+            >
+              Live review queue
             </NavLink>
           </li>
           <li>
@@ -27,16 +37,6 @@ export default function Sidebar() {
               }
             >
               Analyst Workspace
-            </NavLink>
-          </li>
-          <li>
-            <NavLink
-              to="/history"
-              className={({ isActive }) =>
-                isActive ? "nav-item active" : "nav-item"
-              }
-            >
-              History
             </NavLink>
           </li>
           {isReviewPage && (

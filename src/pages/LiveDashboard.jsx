@@ -22,7 +22,7 @@ const chartData = [
   { name: "Sun", detected: 165, critical: 35 },
 ];
 
-export default function Dashboard() {
+export default function LiveDashboard() {
   const { records: demoData } = useScanData();
   const domainsMonitored = demoData.length;
   const criticalAlerts = demoData.filter(
@@ -45,7 +45,7 @@ export default function Dashboard() {
   return (
     <>
       <Header
-        title="Dashboard"
+        title="Live dashboard"
         subtitle="Live overview of newly registered domains and flagged alerts"
       />
 

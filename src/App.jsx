@@ -2,9 +2,9 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import ForgotPassword from './pages/ForgotPassword';
-import Dashboard from './pages/Dashboard';
+import LiveDashboard from './pages/LiveDashboard';
 import AnalystWorkspace from './pages/AnalystWorkspace';
-import ScanHistory from './pages/ScanHistory';
+import LiveReviewQueue from './pages/LiveReviewQueue';
 import ScanResult from './pages/ScanResult';
 import Layout from './components/Layout';
 import { ScanDataProvider } from './context/ScanDataContext';
@@ -20,9 +20,9 @@ function App() {
         
         {/* Authenticated Routes with Sidebar/Layout */}
         <Route element={<ScanDataProvider><Layout /></ScanDataProvider>}>
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/dashboard" element={<LiveDashboard />} />
           <Route path="/workspace" element={<AnalystWorkspace />} />
-          <Route path="/history" element={<ScanHistory />} />
+          <Route path="/queue" element={<LiveReviewQueue />} />
           <Route path="/review/:id" element={<ScanResult />} />
         </Route>
       </Routes>

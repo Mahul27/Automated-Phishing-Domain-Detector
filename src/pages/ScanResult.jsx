@@ -21,7 +21,7 @@ export default function ScanResult() {
         <div style={{ padding: "20px", textAlign: "center" }}>
           <h2>Scan result not found.</h2>
           <button
-            onClick={() => navigate("/history")}
+            onClick={() => navigate("/queue")}
             style={{
               padding: "8px 16px",
               cursor: "pointer",
@@ -48,7 +48,7 @@ export default function ScanResult() {
     updatedRecord.review_date = new Date().toISOString().split("T")[0];
 
     updateRecord(updatedRecord);
-    navigate("/history");
+    navigate("/queue");
   };
 
   return (
@@ -60,7 +60,7 @@ export default function ScanResult() {
 
       <div style={{ marginBottom: "15px" }}>
         <button
-          onClick={() => navigate("/history")}
+          onClick={() => navigate("/queue")}
           style={{
             padding: "8px 16px",
             cursor: "pointer",

@@ -4,7 +4,7 @@ import { useScanData } from "../context/ScanDataContext";
 import { useNavigate } from "react-router-dom";
 import { getRiskLevel, getRiskColor } from "../utils/risk";
 
-export default function ScanHistory() {
+export default function LiveReviewQueue() {
   const { records: demoData } = useScanData();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
@@ -29,7 +29,7 @@ export default function ScanHistory() {
   return (
     <>
       <Header
-        title="Scan History"
+        title="Live review queue"
         subtitle="Search and review earlier detection records."
       />
 
