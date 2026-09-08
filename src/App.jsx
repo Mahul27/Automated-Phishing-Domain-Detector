@@ -3,10 +3,9 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import ForgotPassword from './pages/ForgotPassword';
 import Dashboard from './pages/Dashboard';
-import ManualScan from './pages/ManualScan';
+import AnalystWorkspace from './pages/AnalystWorkspace';
 import ScanHistory from './pages/ScanHistory';
 import ScanResult from './pages/ScanResult';
-import DataUpload from './pages/DataUpload';
 import Layout from './components/Layout';
 import { ScanDataProvider } from './context/ScanDataContext';
 import './index.css';
@@ -22,8 +21,7 @@ function App() {
         {/* Authenticated Routes with Sidebar/Layout */}
         <Route element={<ScanDataProvider><Layout /></ScanDataProvider>}>
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/scan" element={<ManualScan />} />
-          <Route path="/upload" element={<DataUpload />} />
+          <Route path="/workspace" element={<AnalystWorkspace />} />
           <Route path="/history" element={<ScanHistory />} />
           <Route path="/review/:id" element={<ScanResult />} />
         </Route>

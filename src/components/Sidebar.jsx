@@ -21,22 +21,12 @@ export default function Sidebar() {
           </li>
           <li>
             <NavLink
-              to="/scan"
+              to="/workspace"
               className={({ isActive }) =>
                 isActive ? "nav-item active" : "nav-item"
               }
             >
-              Manual Scan
-            </NavLink>
-          </li>
-          <li>
-            <NavLink
-              to="/upload"
-              className={({ isActive }) =>
-                isActive ? "nav-item active" : "nav-item"
-              }
-            >
-              Data Upload
+              Analyst Workspace
             </NavLink>
           </li>
           <li>
