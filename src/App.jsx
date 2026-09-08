@@ -8,6 +8,7 @@ import ScanHistory from './pages/ScanHistory';
 import ScanResult from './pages/ScanResult';
 import DataUpload from './pages/DataUpload';
 import Layout from './components/Layout';
+import { ScanDataProvider } from './context/ScanDataContext';
 import './index.css';
 
 function App() {
@@ -19,7 +20,7 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         
         {/* Authenticated Routes with Sidebar/Layout */}
-        <Route element={<Layout />}>
+        <Route element={<ScanDataProvider><Layout /></ScanDataProvider>}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/scan" element={<ManualScan />} />
           <Route path="/upload" element={<DataUpload />} />

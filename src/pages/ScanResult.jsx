@@ -1,11 +1,12 @@
 import Header from "../components/Header";
 import { useParams, useNavigate } from "react-router-dom";
-import demoData from "../data/demo_data.json";
+import { useScanData } from "../context/ScanDataContext";
 import { getRiskColor } from "../utils/risk";
 
 export default function ScanResult() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { records: demoData, updateRecord } = useScanData();
 
   // Find the specific record from demo data
   const record = demoData.find((r) => r.id === parseInt(id));
@@ -40,18 +41,13 @@ export default function ScanResult() {
   }
 
   const handleDecision = (isPhishing) => {
-    record.review_status = "Completed";
-    record.decision = isPhishing ? "Confirmed Phishing" : "False Positive";
-    record.reviewer = "Current Analyst";
-    record.review_date = new Date().toISOString().split("T")[0];
+    const updatedRecord = { ...record };
+    updatedRecord.review_status = "Completed";
+    updatedRecord.decision = isPhishing ? "Confirmed Phishing" : "False Positive";
+    updatedRecord.reviewer = "Current Analyst";
+    updatedRecord.review_date = new Date().toISOString().split("T")[0];
 
-    if (!isPhishing) {
-      record.prediction = "Safe";
-      record.risk_score = 0;
-    } else {
-      record.prediction = "Phishing";
-    }
-
+    updateRecord(updatedRecord);
     navigate("/history");
   };
 
@@ -105,7 +101,7 @@ export default function ScanResult() {
             </span>
           </li>
           <li style={{ marginBottom: "10px" }}>
-            <strong>Prediction:</strong>{" "}
+            <strong>Model Prediction:</strong>{" "}
             <span
               style={{
                 color: getRiskColor(record.risk_score),
@@ -121,7 +117,7 @@ export default function ScanResult() {
                 <strong>Review Status:</strong> <span>{record.review_status}</span>
               </li>
               <li style={{ marginBottom: "10px" }}>
-                <strong>Decision:</strong> <span>{record.decision}</span>
+                <strong>Analyst Decision:</strong> <span>{record.decision}</span>
               </li>
               <li style={{ marginBottom: "10px" }}>
                 <strong>Reviewer:</strong> <span>{record.reviewer}</span>

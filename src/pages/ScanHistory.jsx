@@ -1,10 +1,11 @@
 import { useState } from "react";
 import Header from "../components/Header";
-import demoData from "../data/demo_data.json";
+import { useScanData } from "../context/ScanDataContext";
 import { useNavigate } from "react-router-dom";
 import { getRiskLevel, getRiskColor } from "../utils/risk";
 
 export default function ScanHistory() {
+  const { records: demoData } = useScanData();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [riskFilter, setRiskFilter] = useState("All");

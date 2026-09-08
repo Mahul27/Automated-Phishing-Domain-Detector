@@ -1,6 +1,5 @@
-import { Link } from "react-router-dom";
 import Header from "../components/Header";
-import demoData from "../data/demo_data.json";
+import { useScanData } from "../context/ScanDataContext";
 import { getRiskLevel } from "../utils/risk";
 import {
   ComposedChart,
@@ -24,6 +23,7 @@ const chartData = [
 ];
 
 export default function Dashboard() {
+  const { records: demoData } = useScanData();
   const domainsMonitored = demoData.length;
   const criticalAlerts = demoData.filter(
     (d) => d.prediction === "Phishing",

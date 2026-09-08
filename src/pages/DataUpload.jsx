@@ -82,7 +82,6 @@ export default function DataUpload() {
       .filter(Boolean);
     if (lines.length === 0) return [];
 
-    let headerIndex = -1;
     const headerRow = lines[0].split(",").map((col) =>
       col
         .trim()
@@ -91,7 +90,7 @@ export default function DataUpload() {
     );
 
     // Check for 'url' or 'domain' header
-    headerIndex = headerRow.findIndex(
+    const headerIndex = headerRow.findIndex(
       (col) => col === "url" || col === "domain" || col.includes("url"),
     );
 
@@ -181,45 +180,7 @@ export default function DataUpload() {
     return /^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(domain);
   };
 
-  const loadSampleCSV = () => {
-    const sample = `url\npaypal-account-update.info\nsafe-banking-verify.com\napple-id-recovery.net\nlegitimate-site.org\nmicro-secure-login.xyz`;
-    const parsed = parseCSV(sample);
-    setFileName("sample_domains.csv");
-    setFileSize("145 B");
-    setRecords(parsed);
-    setFileData({
-      name: "sample_domains.csv",
-      totalCount: parsed.length,
-      appliedCount: parsed.length,
-      type: "CSV",
-    });
-    setError("");
-  };
 
-  const loadSampleJSON = () => {
-    const sample = JSON.stringify(
-      [
-        { url: "chase-auth-service.com" },
-        { url: "github-enterprise-login.net" },
-        { url: "amazon-prime-alert.xyz" },
-        { url: "google-workspace-verify.info" },
-        { url: "bank-portal-security.org" },
-      ],
-      null,
-      2,
-    );
-    const parsed = parseJSON(sample);
-    setFileName("sample_feed.json");
-    setFileSize("210 B");
-    setRecords(parsed);
-    setFileData({
-      name: "sample_feed.json",
-      totalCount: parsed.length,
-      appliedCount: parsed.length,
-      type: "JSON",
-    });
-    setError("");
-  };
 
   const handleScanRecord = (domain) => {
     navigate("/scan", { state: { domain } });
