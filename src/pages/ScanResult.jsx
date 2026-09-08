@@ -7,8 +7,37 @@ export default function ScanResult() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  // Find the specific record from demo data, or fallback to the first one
-  const record = demoData.find((r) => r.id === parseInt(id)) || demoData[0];
+  // Find the specific record from demo data
+  const record = demoData.find((r) => r.id === parseInt(id));
+
+  if (!record) {
+    return (
+      <>
+        <Header
+          title="Review Details"
+          subtitle="Detailed analysis of the requested domain."
+        />
+        <div style={{ padding: "20px", textAlign: "center" }}>
+          <h2>Scan result not found.</h2>
+          <button
+            onClick={() => navigate("/history")}
+            style={{
+              padding: "8px 16px",
+              cursor: "pointer",
+              backgroundColor: "#6c757d",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              fontWeight: "bold",
+              marginTop: "15px",
+            }}
+          >
+            &larr; Return to Scan History
+          </button>
+        </div>
+      </>
+    );
+  }
 
   const handleDecision = (isPhishing) => {
     record.review_status = "Completed";
