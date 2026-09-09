@@ -1,13 +1,63 @@
 import Header from "../components/Header";
 import { useParams, useNavigate } from "react-router-dom";
-import demoData from "../data/demo_data.json";
+import { useScanData } from "../context/ScanDataContext";
+import { getRiskColor } from "../utils/risk";
 
 export default function ScanResult() {
-  const { id } = useParams();
+  const { source, id } = useParams();
   const navigate = useNavigate();
+  const { personalRecords, liveRecords, updatePersonalRecord, updateLiveRecord } = useScanData();
 
-  // Find the specific record from demo data, or fallback to the first one
-  const record = demoData.find((r) => r.id === parseInt(id)) || demoData[0];
+  // Find the specific record from either live or personal data
+  const searchId = parseInt(id);
+  const isPersonalRecord = source === "personal";
+  const record = isPersonalRecord 
+    ? personalRecords.find((r) => r.id === searchId)
+    : liveRecords.find((r) => r.id === searchId);
+
+  if (!record) {
+    return (
+      <>
+        <Header
+          title="Review Details"
+          subtitle="Detailed analysis of the requested domain."
+        />
+        <div style={{ padding: "20px", textAlign: "center" }}>
+          <h2>Scan result not found.</h2>
+          <button
+            onClick={() => navigate("/queue")}
+            style={{
+              padding: "8px 16px",
+              cursor: "pointer",
+              backgroundColor: "#6c757d",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              fontWeight: "bold",
+              marginTop: "15px",
+            }}
+          >
+            &larr; Return to Scan History
+          </button>
+        </div>
+      </>
+    );
+  }
+
+  const handleDecision = (isPhishing) => {
+    const updatedRecord = { ...record };
+    updatedRecord.review_status = "Completed";
+    updatedRecord.decision = isPhishing ? "Confirmed Phishing" : "False Positive";
+    updatedRecord.reviewer = "Current Analyst";
+    updatedRecord.review_date = new Date().toISOString().split("T")[0];
+
+    if (isPersonalRecord) {
+      updatePersonalRecord(updatedRecord);
+    } else {
+      updateLiveRecord(updatedRecord);
+    }
+    navigate("/queue");
+  };
 
   return (
     <>
@@ -18,7 +68,7 @@ export default function ScanResult() {
 
       <div style={{ marginBottom: "15px" }}>
         <button
-          onClick={() => navigate("/history")}
+          onClick={() => navigate("/queue")}
           style={{
             padding: "8px 16px",
             cursor: "pointer",
@@ -51,7 +101,7 @@ export default function ScanResult() {
             <strong>Risk Score:</strong>{" "}
             <span
               style={{
-                color: record.risk_score > 50 ? "red" : "green",
+                color: getRiskColor(record.risk_score),
                 fontWeight: "bold",
               }}
             >
@@ -59,16 +109,32 @@ export default function ScanResult() {
             </span>
           </li>
           <li style={{ marginBottom: "10px" }}>
-            <strong>Prediction:</strong>{" "}
+            <strong>Model Prediction:</strong>{" "}
             <span
               style={{
-                color: record.risk_score > 50 ? "red" : "green",
+                color: getRiskColor(record.risk_score),
                 fontWeight: "bold",
               }}
             >
               {record.prediction}
             </span>
           </li>
+          {record.review_status === "Completed" && (
+            <>
+              <li style={{ marginBottom: "10px" }}>
+                <strong>Review Status:</strong> <span>{record.review_status}</span>
+              </li>
+              <li style={{ marginBottom: "10px" }}>
+                <strong>Analyst Decision:</strong> <span>{record.decision}</span>
+              </li>
+              <li style={{ marginBottom: "10px" }}>
+                <strong>Reviewer:</strong> <span>{record.reviewer}</span>
+              </li>
+              <li style={{ marginBottom: "10px" }}>
+                <strong>Review Date:</strong> <span>{record.review_date}</span>
+              </li>
+            </>
+          )}
         </ul>
       </section>
 
@@ -315,6 +381,72 @@ export default function ScanResult() {
             </tr>
           </tbody>
         </table>
+      </section>
+
+      {/* 3. Human Decision */}
+      <section
+        style={{
+          border: "1px solid black",
+          padding: "20px",
+          marginBottom: "20px",
+          backgroundColor: "#fff",
+        }}
+      >
+        {record.review_status === "Completed" ? (
+          <div>
+            <h2 style={{ color: "green", marginBottom: "10px", marginTop: 0 }}>
+              Decision Recorded
+            </h2>
+            <p>
+              This scan was reviewed by <strong>{record.reviewer}</strong> on{" "}
+              <strong>{record.review_date}</strong>. The final decision was{" "}
+              <strong>{record.decision}</strong>.
+            </p>
+          </div>
+        ) : (
+          <>
+            <h2 style={{ color: "#d9534f", marginBottom: "10px", marginTop: 0 }}>
+              Human decision required
+            </h2>
+            <p style={{ marginBottom: "5px" }}>
+              This score is not confirmed yet. Please wait for the analyst to review it.
+            </p>
+            <p style={{ marginBottom: "20px" }}>
+              Review the evidence before recording a final decision.
+            </p>
+
+            <div style={{ display: "flex", gap: "15px" }}>
+              <button
+                onClick={() => handleDecision(false)}
+                style={{
+                  padding: "10px 20px",
+                  cursor: "pointer",
+                  backgroundColor: "#f0ad4e",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  fontWeight: "bold",
+                }}
+              >
+                Mark false positive
+              </button>
+              <button
+                onClick={() => handleDecision(true)}
+                style={{
+                  padding: "10px 20px",
+                  cursor: "pointer",
+                  backgroundColor: "#d9534f",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  fontWeight: "bold",
+                }}
+              >
+                Confirm phishing
+              </button>
+            </div>
+          </>
+        )}
       </section>
     </>
   );

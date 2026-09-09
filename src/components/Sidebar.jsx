@@ -16,37 +16,27 @@ export default function Sidebar() {
                 isActive ? "nav-item active" : "nav-item"
               }
             >
-              Dashboard
+              Live dashboard
             </NavLink>
           </li>
           <li>
             <NavLink
-              to="/scan"
+              to="/queue"
               className={({ isActive }) =>
                 isActive ? "nav-item active" : "nav-item"
               }
             >
-              Manual Scan
+              Live review queue
             </NavLink>
           </li>
           <li>
             <NavLink
-              to="/upload"
+              to="/workspace"
               className={({ isActive }) =>
                 isActive ? "nav-item active" : "nav-item"
               }
             >
-              Data Upload
-            </NavLink>
-          </li>
-          <li>
-            <NavLink
-              to="/history"
-              className={({ isActive }) =>
-                isActive ? "nav-item active" : "nav-item"
-              }
-            >
-              History
+              Analyst Workspace
             </NavLink>
           </li>
           {isReviewPage && (
