@@ -168,7 +168,7 @@ export default function LiveReviewQueue() {
                   <td style={{ padding: "12px" }}>{record.decision || "-"}</td>
                   <td style={{ padding: "12px" }}>
                     <button
-                      onClick={() => navigate(`/review/${record.id}`)}
+                      onClick={() => navigate(`/review/live/${record.id}`)}
                       style={{
                         padding: "5px 10px",
                         cursor: "pointer",

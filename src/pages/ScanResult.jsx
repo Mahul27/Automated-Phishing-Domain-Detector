@@ -4,13 +4,13 @@ import { useScanData } from "../context/ScanDataContext";
 import { getRiskColor } from "../utils/risk";
 
 export default function ScanResult() {
-  const { id } = useParams();
+  const { source, id } = useParams();
   const navigate = useNavigate();
   const { personalRecords, liveRecords, updatePersonalRecord, updateLiveRecord } = useScanData();
 
   // Find the specific record from either live or personal data
   const searchId = parseInt(id);
-  const isPersonalRecord = personalRecords.some((r) => r.id === searchId);
+  const isPersonalRecord = source === "personal";
   const record = isPersonalRecord 
     ? personalRecords.find((r) => r.id === searchId)
     : liveRecords.find((r) => r.id === searchId);

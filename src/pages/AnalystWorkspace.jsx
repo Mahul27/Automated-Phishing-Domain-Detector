@@ -209,7 +209,7 @@ export default function AnalystWorkspace() {
         (record) => record.domain.toLowerCase() === input.toLowerCase(),
       );
       setLoading(false);
-      if (matchedRecord) navigate(`/review/${matchedRecord.id}`);
+      if (matchedRecord) navigate(`/review/personal/${matchedRecord.id}`);
       else setScanError("This domain is not available in the data.");
     }, 1500);
   };

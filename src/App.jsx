@@ -23,7 +23,7 @@ function App() {
           <Route path="/dashboard" element={<LiveDashboard />} />
           <Route path="/workspace" element={<AnalystWorkspace />} />
           <Route path="/queue" element={<LiveReviewQueue />} />
-          <Route path="/review/:id" element={<ScanResult />} />
+          <Route path="/review/:source/:id" element={<ScanResult />} />
         </Route>
       </Routes>
     </BrowserRouter>
