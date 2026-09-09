@@ -5,14 +5,17 @@ import { useNavigate } from "react-router-dom";
 import { getRiskLevel, getRiskColor } from "../utils/risk";
 
 export default function LiveReviewQueue() {
-  const { records: demoData } = useScanData();
+  const { liveRecords: demoData } = useScanData();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [riskFilter, setRiskFilter] = useState("All");
+  const [currentPage, setCurrentPage] = useState(1);
+  const recordsPerPage = 15;
 
   const handleClearFilters = () => {
     setSearchTerm("");
     setRiskFilter("All");
+    setCurrentPage(1);
   };
 
   const filteredData = demoData.filter((record) => {
@@ -25,6 +28,12 @@ export default function LiveReviewQueue() {
 
     return matchesSearch && matchesRisk;
   });
+
+  const totalPages = Math.max(1, Math.ceil(filteredData.length / recordsPerPage));
+  const currentRecords = filteredData.slice(
+    (currentPage - 1) * recordsPerPage,
+    currentPage * recordsPerPage
+  );
 
   return (
     <>
@@ -39,12 +48,12 @@ export default function LiveReviewQueue() {
           className="search-input"
           placeholder="Search by domain"
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
         />
         <select 
           className="filter-select" 
           value={riskFilter}
-          onChange={(e) => setRiskFilter(e.target.value)}
+          onChange={(e) => { setRiskFilter(e.target.value); setCurrentPage(1); }}
         >
           <option value="All">All Risk Levels</option>
           <option value="High">High Risk</option>
@@ -60,8 +69,43 @@ export default function LiveReviewQueue() {
         </button>
       </section>
 
-      <div style={{ fontSize: "13px", marginBottom: "10px" }}>
-        Showing {filteredData.length} detection records
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+        <div style={{ fontSize: "13px" }}>
+          Showing {filteredData.length} detection records
+        </div>
+        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          <span style={{ fontSize: "14px", color: "#64748b" }}>
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            style={{
+              padding: "4px 10px",
+              border: "1px solid #e2e8f0",
+              backgroundColor: currentPage === 1 ? "#f8fafc" : "#fff",
+              color: currentPage === 1 ? "#94a3b8" : "#0f172a",
+              cursor: currentPage === 1 ? "not-allowed" : "pointer",
+              borderRadius: "4px"
+            }}
+          >
+            Previous
+          </button>
+          <button
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            style={{
+              padding: "4px 10px",
+              border: "1px solid #e2e8f0",
+              backgroundColor: currentPage === totalPages ? "#f8fafc" : "#fff",
+              color: currentPage === totalPages ? "#94a3b8" : "#0f172a",
+              cursor: currentPage === totalPages ? "not-allowed" : "pointer",
+              borderRadius: "4px"
+            }}
+          >
+            Next
+          </button>
+        </div>
       </div>
 
       <section
@@ -94,8 +138,8 @@ export default function LiveReviewQueue() {
             </tr>
           </thead>
           <tbody>
-            {filteredData.length > 0 ? (
-              filteredData.map((record) => (
+            {currentRecords.length > 0 ? (
+              currentRecords.map((record) => (
                 <tr key={record.id} style={{ borderBottom: "1px solid #eee" }}>
                   <td style={{ padding: "12px" }}>{record.id}</td>
                   <td style={{ padding: "12px", fontWeight: "bold" }}>

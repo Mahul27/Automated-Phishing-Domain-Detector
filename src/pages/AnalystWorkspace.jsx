@@ -1,9 +1,10 @@
 import { useState, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../components/Header";
-import demoData from "../data/demo_data.json";
+import { useScanData } from "../context/ScanDataContext";
 
 export default function AnalystWorkspace() {
+  const { personalRecords: demoData } = useScanData();
   const [activeTab, setActiveTab] = useState("my_records");
 
   // Data Upload State

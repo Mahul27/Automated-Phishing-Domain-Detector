@@ -6,10 +6,14 @@ import { getRiskColor } from "../utils/risk";
 export default function ScanResult() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { records: demoData, updateRecord } = useScanData();
+  const { personalRecords, liveRecords, updatePersonalRecord, updateLiveRecord } = useScanData();
 
-  // Find the specific record from demo data
-  const record = demoData.find((r) => r.id === parseInt(id));
+  // Find the specific record from either live or personal data
+  const searchId = parseInt(id);
+  const isPersonalRecord = personalRecords.some((r) => r.id === searchId);
+  const record = isPersonalRecord 
+    ? personalRecords.find((r) => r.id === searchId)
+    : liveRecords.find((r) => r.id === searchId);
 
   if (!record) {
     return (
@@ -47,7 +51,11 @@ export default function ScanResult() {
     updatedRecord.reviewer = "Current Analyst";
     updatedRecord.review_date = new Date().toISOString().split("T")[0];
 
-    updateRecord(updatedRecord);
+    if (isPersonalRecord) {
+      updatePersonalRecord(updatedRecord);
+    } else {
+      updateLiveRecord(updatedRecord);
+    }
     navigate("/queue");
   };
 

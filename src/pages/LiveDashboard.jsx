@@ -1,3 +1,4 @@
+import { useState } from "react";
 import Header from "../components/Header";
 import { useScanData } from "../context/ScanDataContext";
 import { getRiskLevel } from "../utils/risk";
@@ -12,18 +13,34 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-const chartData = [
-  { name: "Mon", detected: 120, critical: 20 },
-  { name: "Tue", detected: 140, critical: 25 },
-  { name: "Wed", detected: 130, critical: 22 },
-  { name: "Thu", detected: 160, critical: 30 },
-  { name: "Fri", detected: 154, critical: 34 },
-  { name: "Sat", detected: 145, critical: 28 },
-  { name: "Sun", detected: 165, critical: 35 },
-];
-
 export default function LiveDashboard() {
-  const { records: demoData } = useScanData();
+  const { liveRecords: demoData } = useScanData();
+
+  const chartData = [
+    { name: "Mon", detected: 0, critical: 0 },
+    { name: "Tue", detected: 0, critical: 0 },
+    { name: "Wed", detected: 0, critical: 0 },
+    { name: "Thu", detected: 0, critical: 0 },
+    { name: "Fri", detected: 0, critical: 0 },
+    { name: "Sat", detected: 0, critical: 0 },
+    { name: "Sun", detected: 0, critical: 0 },
+  ];
+
+  demoData.forEach((d) => {
+    const dayIndex = (d.id - 1) % 7;
+    chartData[dayIndex].detected += 1;
+    if (d.prediction === "Phishing") {
+      chartData[dayIndex].critical += 1;
+    }
+  });
+  const [currentPage, setCurrentPage] = useState(1);
+  const alertsPerPage = 10;
+
+  const totalPages = Math.max(1, Math.ceil(demoData.length / alertsPerPage));
+  const currentAlerts = demoData.slice(
+    (currentPage - 1) * alertsPerPage,
+    currentPage * alertsPerPage,
+  );
   const domainsMonitored = demoData.length;
   const criticalAlerts = demoData.filter(
     (d) => d.prediction === "Phishing",
@@ -203,7 +220,50 @@ export default function LiveDashboard() {
       </section>
 
       <section className="alerts-section">
-        <h2>Recent domain alerts</h2>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "16px",
+          }}
+        >
+          <h2 style={{ margin: 0 }}>Recent domain alerts</h2>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            <span style={{ fontSize: "14px", color: "#64748b" }}>
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              style={{
+                padding: "6px 12px",
+                border: "1px solid #e2e8f0",
+                backgroundColor: currentPage === 1 ? "#f8fafc" : "#fff",
+                color: currentPage === 1 ? "#94a3b8" : "#0f172a",
+                cursor: currentPage === 1 ? "not-allowed" : "pointer",
+                borderRadius: "4px",
+              }}
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              style={{
+                padding: "6px 12px",
+                border: "1px solid #e2e8f0",
+                backgroundColor:
+                  currentPage === totalPages ? "#f8fafc" : "#fff",
+                color: currentPage === totalPages ? "#94a3b8" : "#0f172a",
+                cursor: currentPage === totalPages ? "not-allowed" : "pointer",
+                borderRadius: "4px",
+              }}
+            >
+              Next
+            </button>
+          </div>
+        </div>
         <div className="alerts-table-container" style={{ overflowX: "auto" }}>
           <table
             className="alerts-table"
@@ -224,7 +284,7 @@ export default function LiveDashboard() {
               </tr>
             </thead>
             <tbody>
-              {demoData.map((alert) => (
+              {currentAlerts.map((alert) => (
                 <tr key={alert.id} style={{ borderBottom: "1px solid #eee" }}>
                   <td style={{ padding: "12px 8px" }}>{alert.domain}</td>
                   <td style={{ padding: "12px 8px" }}>{alert.risk_score}</td>
