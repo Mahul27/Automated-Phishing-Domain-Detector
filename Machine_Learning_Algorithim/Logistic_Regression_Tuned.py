@@ -50,7 +50,8 @@ else:
 
     best_index = valid_tpr.argmax() #This is used to get the index of the maximum true positive rate that meets the target false positive rate
     best_threshold_value = valid_threshold[best_index] #This is used to get the best threshold value that meets the target false positive rate  
-
+    print("-------------------------------------------------")
+    print("Logistirc Regression Evaluation metrics(Tuned):")
     print("Best threshold value for target false positive rate of 2%:", best_threshold_value) #This is used to print the best threshold value that meets the target false positive rate
     print("True positive rate at best threshold:", valid_tpr[best_index]) #This is used to print the true positive rate at the best threshold that meets the target false positive rate
     print("False positive rate at best threshold:",valid_fpr[best_index]) #This is used to print the false positive rate at the best threshold that meets the target false positive rate
@@ -64,6 +65,7 @@ recall_new = recall_score(Y_test, y_pred_New) #This is used to calculate the rec
 f1_new = f1_score(Y_test, y_pred_New) #This is used to calculate the F1 score of the model using the best threshold
 tn_new, fp_new, fn_new, tp_new = confusion_matrix(Y_test, y_pred_New).ravel() #This is used to calculate the confusion matrix of the model using the best threshold and unpack the values into true negatives (tn), false positives (fp), false negatives (fn), and true positives (tp)
 
+print("-------------------------------------------------")
 print("Evaluation metrics using the best threshold:")
 print("Precision:", precision_new) #This is used to print the precision of the model using the best threshold
 print("Recall:", recall_new) #This is used to print the recall of the model using the best threshold

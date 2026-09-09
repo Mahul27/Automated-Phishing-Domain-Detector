@@ -33,7 +33,8 @@ else:
 
     best_index = valid_tpr.argmax() #This is used to get the index of the maximum true positive rate that meets the target false positive rate
     best_threshold_value = valid_threshold[best_index] #This is used to get the best threshold value that meets the target false positive rate
-
+    print("-------------------------------------------------")
+    print("Random Forest Evaluation metrics (Tuned):")
     print("Best threshold value for target false positive rate of 2%:", best_threshold_value) #This is used to print the best threshold value that meets the target false positive rate
     print("True positive rate at best threshold:", valid_tpr[best_index]) #This is used to print the true positive rate at the best threshold that meets the target false positive rate
     print("False positive rate at best threshold:", valid_fpr[best_index]) #This is used to print the false positive rate at the best threshold that meets the target false positive rate
@@ -45,7 +46,7 @@ else:
     recall_tuned = recall_score(Y_test, Y_pred_tuned) #This is used to calculate the recall of the model after tuning
     f1_tuned = f1_score(Y_test, Y_pred_tuned) #This is used to calculate the F1 score of the model after tuning
     tn_tuned, fp_tuned, fn_tuned, tp_tuned = confusion_matrix(Y_test, Y_pred_tuned).ravel() #This is used to calculate the confusion matrix of the model after tuning and unpack the values into true negatives (tn), false positives (fp), false negatives (fn), and true positives (tp)
-
+    print("-------------------------------------------------")
     print("Evaluation metrics after tuning:")
     print("Precision:", precision_tuned) #This is used to print the precision of the model after tuning
     print("Recall:", recall_tuned) #This is used to print the recall of the model after tuning
