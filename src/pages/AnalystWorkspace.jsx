@@ -2,16 +2,16 @@ import { useState, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../components/Header";
 import { useScanData } from "../context/ScanDataContext";
+import Button from "../components/Button";
 
 export default function AnalystWorkspace() {
-  const { personalRecords: demoData } = useScanData();
+  const { personalRecords, addPersonalRecords } = useScanData();
   const [activeTab, setActiveTab] = useState("my_records");
 
   // Data Upload State
   const [fileData, setFileData] = useState(null);
   const [fileName, setFileName] = useState("");
   const [fileSize, setFileSize] = useState("");
-  const [records, setRecords] = useState([]);
   const [uploadError, setUploadError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const fileInputRef = useRef(null);
@@ -71,7 +71,7 @@ export default function AnalystWorkspace() {
         const maxRecords = parsed.slice(0, 1000);
         setFileName(file.name);
         setFileSize(formatBytes(file.size));
-        setRecords(maxRecords);
+        addPersonalRecords(maxRecords);
         setFileData({
           name: file.name,
           totalCount: parsed.length,
@@ -113,7 +113,6 @@ export default function AnalystWorkspace() {
         const clean = cleanUrl(rawUrl);
         if (clean)
           urls.push({
-            id: idx + 1,
             original: rawUrl,
             domain: clean,
             length: clean.length,
@@ -151,7 +150,6 @@ export default function AnalystWorkspace() {
         const clean = cleanUrl(rawUrl);
         if (clean)
           urls.push({
-            id: idx + 1,
             original: rawUrl,
             domain: clean,
             length: clean.length,
@@ -178,7 +176,6 @@ export default function AnalystWorkspace() {
     setFileData(null);
     setFileName("");
     setFileSize("");
-    setRecords([]);
     setUploadError("");
     setSearchTerm("");
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -205,7 +202,7 @@ export default function AnalystWorkspace() {
     setDomain(input);
     setLoading(true);
     setTimeout(() => {
-      const matchedRecord = demoData.find(
+      const matchedRecord = personalRecords.find(
         (record) => record.domain.toLowerCase() === input.toLowerCase(),
       );
       setLoading(false);
@@ -214,10 +211,10 @@ export default function AnalystWorkspace() {
     }, 1500);
   };
 
-  const filteredRecords = records.filter(
+  const filteredRecords = personalRecords.filter(
     (r) =>
       r.domain.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.original.toLowerCase().includes(searchTerm.toLowerCase()),
+      (r.original && r.original.toLowerCase().includes(searchTerm.toLowerCase())),
   );
 
   return (
@@ -230,7 +227,7 @@ export default function AnalystWorkspace() {
       <div className="metrics-row">
         <div className="metric-card">
           <h3>My records</h3>
-          <div className="metric-sub">{records.length + (domain ? 1 : 0)}</div>
+          <div className="metric-sub">{personalRecords.length + (domain ? 1 : 0)}</div>
           <p style={{ fontSize: "12px", color: "#64748b" }}>
             Manual + imported
           </p>
@@ -244,14 +241,14 @@ export default function AnalystWorkspace() {
         </div>
         <div className="metric-card">
           <h3>Imported records</h3>
-          <div className="metric-sub">{records.length}</div>
+          <div className="metric-sub">{personalRecords.length}</div>
           <p style={{ fontSize: "12px", color: "#64748b" }}>
             {fileName || "No file imported"}
           </p>
         </div>
         <div className="metric-card">
           <h3>Awaiting review</h3>
-          <div className="metric-sub">{records.length + (domain ? 1 : 0)}</div>
+          <div className="metric-sub">{personalRecords.length + (domain ? 1 : 0)}</div>
           <p style={{ fontSize: "12px", color: "#64748b" }}>
             Analyst decisions needed
           </p>
@@ -259,37 +256,9 @@ export default function AnalystWorkspace() {
       </div>
 
       <div style={{ marginBottom: "20px", display: "flex", gap: "10px" }}>
-        <button
-          onClick={() => setActiveTab("my_records")}
-          className="btn-manual-scan"
-          style={{
-            fontWeight: activeTab === "my_records" ? "bold" : "normal",
-            backgroundColor: activeTab === "my_records" ? "#e2e8f0" : "white",
-          }}
-        >
-          My records
-        </button>
-        <button
-          onClick={() => setActiveTab("manual_search")}
-          className="btn-manual-scan"
-          style={{
-            fontWeight: activeTab === "manual_search" ? "bold" : "normal",
-            backgroundColor:
-              activeTab === "manual_search" ? "#e2e8f0" : "white",
-          }}
-        >
-          Manual search
-        </button>
-        <button
-          onClick={() => setActiveTab("import_csv")}
-          className="btn-manual-scan"
-          style={{
-            fontWeight: activeTab === "import_csv" ? "bold" : "normal",
-            backgroundColor: activeTab === "import_csv" ? "#e2e8f0" : "white",
-          }}
-        >
-          Import CSV / JSON
-        </button>
+        <Button variant="default" className={activeTab === "my_records" ? "active" : ""} onClick={() => setActiveTab("my_records")}>My records</Button>
+        <Button variant="default" className={activeTab === "manual_search" ? "active" : ""} onClick={() => setActiveTab("manual_search")}>Manual search</Button>
+        <Button variant="default" className={activeTab === "import_csv" ? "active" : ""} onClick={() => setActiveTab("import_csv")}>Import CSV / JSON</Button>
       </div>
 
       {activeTab === "my_records" && (
@@ -348,7 +317,7 @@ export default function AnalystWorkspace() {
             }}
           >
             <span style={{ fontSize: "14px" }}>
-              <strong>{filteredRecords.length}</strong> of {records.length}{" "}
+              <strong>{filteredRecords.length}</strong> of {personalRecords.length}{" "}
               records
             </span>
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -359,61 +328,47 @@ export default function AnalystWorkspace() {
             </div>
           </div>
 
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              textAlign: "left",
-            }}
-          >
+          <table className="app-table">
             <thead>
-              <tr style={{ borderBottom: "1px solid black" }}>
-                <th style={{ padding: "8px" }}>Domain / record</th>
-                <th style={{ padding: "8px" }}>Risk level</th>
-                <th style={{ padding: "8px" }}>Review status</th>
-                <th style={{ padding: "8px" }}>Recorded</th>
-                <th style={{ padding: "8px" }}>Action</th>
+              <tr>
+                <th>Domain / record</th>
+                <th>Prediction</th>
+                <th>Risk score</th>
+                <th>Review status</th>
+                <th>Recorded</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
               {filteredRecords.map((item) => (
-                <tr key={item.id} style={{ borderBottom: "1px dotted #ccc" }}>
-                  <td style={{ padding: "8px" }}>
+                <tr key={item.id}>
+                  <td>
                     <div style={{ fontWeight: "bold" }}>{item.domain}</div>
                     <div style={{ fontSize: "12px", color: "gray" }}>
-                      IMPORT - {item.original}
+                      {item.original ? `IMPORT - ${item.original}` : "MANUAL"}
                     </div>
                   </td>
-                  <td style={{ padding: "8px", color: "red" }}>
-                    Critical - 86
+                  <td style={{ color: item.risk_score > 75 ? "red" : "orange" }}>
+                    {item.risk_score ? item.prediction : 'Critical'}
                   </td>
-                  <td style={{ padding: "8px", color: "#d97706" }}>
-                    Pending review
+                  <td style={{ color: item.risk_score > 75 ? "red" : "orange" }}>
+                    {item.risk_score ? item.risk_score : '86'}
                   </td>
-                  <td
-                    style={{ padding: "8px", color: "gray", fontSize: "12px" }}
-                  >
-                    08 Sept, 05:06 pm
+                  <td style={{ color: item.review_status === 'Completed' ? "green" : "#d97706" }}>
+                    {item.review_status || 'Pending review'}
                   </td>
-                  <td style={{ padding: "8px" }}>
-                    <button
-                      onClick={() => handleScanRecord(item.domain)}
-                      style={{
-                        cursor: "pointer",
-                        background: "none",
-                        border: "none",
-                        fontWeight: "bold",
-                      }}
-                    >
-                      Open &gt;
-                    </button>
+                  <td style={{ color: "gray", fontSize: "12px" }}>
+                    {item.review_date || '08 Sept, 05:06 pm'}
+                  </td>
+                  <td>
+                    <Button variant="text" size="small" onClick={() => navigate(`/review/personal/${item.id}`)}>Open &gt;</Button>
                   </td>
                 </tr>
               ))}
               {filteredRecords.length === 0 && (
                 <tr>
                   <td
-                    colSpan="5"
+                    colSpan="6"
                     style={{ padding: "20px", textAlign: "center" }}
                   >
                     No records to display.
@@ -439,25 +394,7 @@ export default function AnalystWorkspace() {
                 placeholder="Enter a domain, for example: google.com"
                 disabled={loading}
               />
-              <button
-                type="submit"
-                className="btn-scan"
-                disabled={loading}
-                style={{
-                  textDecoration: "none",
-                  display: "inline-block",
-                  textAlign: "center",
-                  color: "black",
-                  padding: "10px 24px",
-                  boxSizing: "border-box",
-                  cursor: loading ? "not-allowed" : "pointer",
-                  opacity: loading ? 0.7 : 1,
-                  border: "1px solid black",
-                  background: "white",
-                }}
-              >
-                {loading ? "SCANNING..." : "SCAN DOMAIN"}
-              </button>
+              <Button type="submit" variant="outline" size="large" disabled={loading}>{loading ? "SCANNING..." : "SCAN DOMAIN"}</Button>
             </div>
             {scanError && (
               <p style={{ color: "red", marginTop: "10px" }}>{scanError}</p>
@@ -510,37 +447,16 @@ export default function AnalystWorkspace() {
                 onChange={handleFileInputChange}
                 style={{ display: "none" }}
               />
-              <button
-                type="button"
-                className="btn-manual-scan"
-                onClick={handleBrowseClick}
-                style={{
-                  cursor: "pointer",
-                  display: "inline-block",
-                  marginTop: "10px",
-                }}
-              >
-                BROWSE FILES
-              </button>
+              <Button variant="outline" onClick={handleBrowseClick} style={{ marginTop: "10px" }}>BROWSE FILES</Button>
             </>
           ) : (
             <div className="state-box">
               <strong>{fileName}</strong>
               <p>
                 Type: {fileData.type} | Size: {fileSize} | Records parsed:{" "}
-                {records.length}
+                {personalRecords.length}
               </p>
-              <button
-                className="btn-manual-scan"
-                onClick={handleReset}
-                style={{
-                  cursor: "pointer",
-                  display: "inline-block",
-                  marginTop: "10px",
-                }}
-              >
-                UPLOAD DIFFERENT FILE
-              </button>
+              <Button variant="outline" onClick={handleReset} style={{ marginTop: "10px" }}>UPLOAD DIFFERENT FILE</Button>
             </div>
           )}
         </div>

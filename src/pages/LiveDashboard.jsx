@@ -2,6 +2,7 @@ import { useState } from "react";
 import Header from "../components/Header";
 import { useScanData } from "../context/ScanDataContext";
 import { getRiskLevel } from "../utils/risk";
+import Button from "../components/Button";
 import {
   ComposedChart,
   Line,
@@ -233,61 +234,25 @@ export default function LiveDashboard() {
             <span style={{ fontSize: "14px", color: "#64748b" }}>
               Page {currentPage} of {totalPages}
             </span>
-            <button
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              style={{
-                padding: "6px 12px",
-                border: "1px solid #e2e8f0",
-                backgroundColor: currentPage === 1 ? "#f8fafc" : "#fff",
-                color: currentPage === 1 ? "#94a3b8" : "#0f172a",
-                cursor: currentPage === 1 ? "not-allowed" : "pointer",
-                borderRadius: "4px",
-              }}
-            >
-              Previous
-            </button>
-            <button
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-              style={{
-                padding: "6px 12px",
-                border: "1px solid #e2e8f0",
-                backgroundColor:
-                  currentPage === totalPages ? "#f8fafc" : "#fff",
-                color: currentPage === totalPages ? "#94a3b8" : "#0f172a",
-                cursor: currentPage === totalPages ? "not-allowed" : "pointer",
-                borderRadius: "4px",
-              }}
-            >
-              Next
-            </button>
+            <Button variant="default" size="small" disabled={currentPage === 1} onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}>Previous</Button>
+            <Button variant="default" size="small" disabled={currentPage === totalPages} onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}>Next</Button>
           </div>
         </div>
         <div className="alerts-table-container" style={{ overflowX: "auto" }}>
-          <table
-            className="alerts-table"
-            style={{
-              width: "100%",
-              textAlign: "left",
-              borderCollapse: "collapse",
-            }}
-          >
+          <table className="app-table">
             <thead>
-              <tr
-                style={{ borderBottom: "1px solid #e2e8f0", color: "#64748b" }}
-              >
-                <th style={{ padding: "12px 8px" }}>Domain</th>
-                <th style={{ padding: "12px 8px" }}>Risk Score</th>
-                <th style={{ padding: "12px 8px" }}>Prediction</th>
-                <th style={{ padding: "12px 8px" }}>Status</th>
+              <tr>
+                <th>Domain</th>
+                <th>Risk Score</th>
+                <th>Prediction</th>
+                <th>Status</th>
               </tr>
             </thead>
             <tbody>
               {currentAlerts.map((alert) => (
                 <tr key={alert.id} style={{ borderBottom: "1px solid #eee" }}>
-                  <td style={{ padding: "12px 8px" }}>{alert.domain}</td>
-                  <td style={{ padding: "12px 8px" }}>{alert.risk_score}</td>
+                  <td>{alert.domain}</td>
+                  <td>{alert.risk_score}</td>
                   <td
                     style={{
                       padding: "12px 8px",
@@ -298,7 +263,7 @@ export default function LiveDashboard() {
                   >
                     {alert.prediction}
                   </td>
-                  <td style={{ padding: "12px 8px" }}>{alert.review_status}</td>
+                  <td>{alert.review_status}</td>
                 </tr>
               ))}
             </tbody>

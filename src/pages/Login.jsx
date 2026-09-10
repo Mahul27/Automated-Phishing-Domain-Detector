@@ -1,6 +1,7 @@
 import { useNavigate, Link } from "react-router-dom";
 import { useState } from "react";
 import logo from "../assets/logo.webp"; // Using the uploaded logo
+import Button from "../components/Button";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -71,9 +72,9 @@ export default function Login() {
                 <Link to="/forgot-password">Forgot password?</Link>
               </div>
 
-              <button type="submit" className="btn-login">
-                Login button
-              </button>
+              <Button type="submit" variant="outline" fullWidth size="large">
+                Login
+              </Button>
             </form>
 
             <div

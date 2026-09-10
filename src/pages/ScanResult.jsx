@@ -2,6 +2,7 @@ import Header from "../components/Header";
 import { useParams, useNavigate } from "react-router-dom";
 import { useScanData } from "../context/ScanDataContext";
 import { getRiskColor } from "../utils/risk";
+import Button from "../components/Button";
 
 export default function ScanResult() {
   const { source, id } = useParams();
@@ -24,21 +25,7 @@ export default function ScanResult() {
         />
         <div style={{ padding: "20px", textAlign: "center" }}>
           <h2>Scan result not found.</h2>
-          <button
-            onClick={() => navigate("/queue")}
-            style={{
-              padding: "8px 16px",
-              cursor: "pointer",
-              backgroundColor: "#6c757d",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              fontWeight: "bold",
-              marginTop: "15px",
-            }}
-          >
-            &larr; Return to Scan History
-          </button>
+          <Button variant="secondary" onClick={() => navigate(isPersonalRecord ? "/workspace" : "/queue")}>&larr; Return to Scan History</Button>
         </div>
       </>
     );
@@ -56,7 +43,7 @@ export default function ScanResult() {
     } else {
       updateLiveRecord(updatedRecord);
     }
-    navigate("/queue");
+    navigate(isPersonalRecord ? "/workspace" : "/queue");
   };
 
   return (
@@ -67,20 +54,7 @@ export default function ScanResult() {
       />
 
       <div style={{ marginBottom: "15px" }}>
-        <button
-          onClick={() => navigate("/queue")}
-          style={{
-            padding: "8px 16px",
-            cursor: "pointer",
-            backgroundColor: "#6c757d",
-            color: "white",
-            border: "none",
-            borderRadius: "4px",
-            fontWeight: "bold",
-          }}
-        >
-          &larr; Back to History
-        </button>
+        <Button variant="secondary" onClick={() => navigate(isPersonalRecord ? "/workspace" : "/queue")}>&larr; Back to History</Button>
       </div>
 
       {/* 1. Summary Information */}
@@ -149,38 +123,30 @@ export default function ScanResult() {
       >
         <h2>Feature & Risk Information</h2>
         <p>Values extracted by the backend ML model:</p>
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            marginTop: "10px",
-          }}
-        >
+        <table className="app-table" style={{ marginTop: "10px" }}>
           <thead>
             <tr style={{ backgroundColor: "#f0f0f0", textAlign: "left" }}>
-              <th style={{ padding: "10px", border: "1px solid #ccc" }}>
+              <th >
                 Feature
               </th>
-              <th style={{ padding: "10px", border: "1px solid #ccc" }}>
+              <th >
                 Detected Value
               </th>
-              <th style={{ padding: "10px", border: "1px solid #ccc" }}>
+              <th >
                 Risk Indicator
               </th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
+              <td >
                 1. Domain Age
               </td>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
+              <td >
                 {record.domain_age}
               </td>
               <td
                 style={{
-                  padding: "10px",
-                  border: "1px solid #ccc",
                   color:
                     record.domain_age.includes("day") ||
                     record.domain_age.includes("week")
@@ -196,16 +162,14 @@ export default function ScanResult() {
               </td>
             </tr>
             <tr>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
+              <td >
                 2. Registration Period
               </td>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
+              <td >
                 {record.registration_period}
               </td>
               <td
                 style={{
-                  padding: "10px",
-                  border: "1px solid #ccc",
                   color:
                     record.registration_period === "1 year" ? "red" : "green",
                   fontWeight: "bold",
@@ -217,16 +181,14 @@ export default function ScanResult() {
               </td>
             </tr>
             <tr>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
+              <td >
                 3. Domain Length
               </td>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
+              <td >
                 {record.domain_length} characters
               </td>
               <td
                 style={{
-                  padding: "10px",
-                  border: "1px solid #ccc",
                   color: record.domain_length > 20 ? "orange" : "green",
                   fontWeight: "bold",
                 }}
@@ -235,16 +197,14 @@ export default function ScanResult() {
               </td>
             </tr>
             <tr>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
+              <td >
                 4. Number of Hyphens
               </td>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
+              <td >
                 {record.hyphens} hyphens
               </td>
               <td
                 style={{
-                  padding: "10px",
-                  border: "1px solid #ccc",
                   color: record.hyphens > 1 ? "red" : "green",
                   fontWeight: "bold",
                 }}
@@ -253,16 +213,14 @@ export default function ScanResult() {
               </td>
             </tr>
             <tr>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
+              <td >
                 5. Number of Digits
               </td>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
+              <td >
                 {record.digits} digits
               </td>
               <td
                 style={{
-                  padding: "10px",
-                  border: "1px solid #ccc",
                   color: record.digits > 0 ? "orange" : "green",
                   fontWeight: "bold",
                 }}
@@ -271,16 +229,14 @@ export default function ScanResult() {
               </td>
             </tr>
             <tr>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
+              <td >
                 6. Shannon Entropy
               </td>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
+              <td >
                 {record.shannon_entropy} entropy
               </td>
               <td
                 style={{
-                  padding: "10px",
-                  border: "1px solid #ccc",
                   color: record.shannon_entropy === "High" ? "red" : "green",
                   fontWeight: "bold",
                 }}
@@ -289,16 +245,14 @@ export default function ScanResult() {
               </td>
             </tr>
             <tr>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
+              <td >
                 7. Brand Keyword
               </td>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
+              <td >
                 {record.brand_keyword}
               </td>
               <td
                 style={{
-                  padding: "10px",
-                  border: "1px solid #ccc",
                   color: record.brand_keyword !== "None" ? "red" : "green",
                   fontWeight: "bold",
                 }}
@@ -307,16 +261,14 @@ export default function ScanResult() {
               </td>
             </tr>
             <tr>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
+              <td >
                 8. Typosquatting Similarity
               </td>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
+              <td >
                 {record.typosquatting_similarity}
               </td>
               <td
                 style={{
-                  padding: "10px",
-                  border: "1px solid #ccc",
                   color:
                     record.typosquatting_similarity !== "Exact Match" &&
                     record.typosquatting_similarity !== "Low"
@@ -332,16 +284,14 @@ export default function ScanResult() {
               </td>
             </tr>
             <tr>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
+              <td >
                 9. SSL Certificate Age
               </td>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
+              <td >
                 {record.ssl_cert_age}
               </td>
               <td
                 style={{
-                  padding: "10px",
-                  border: "1px solid #ccc",
                   color:
                     record.ssl_cert_age.includes("day") ||
                     record.ssl_cert_age.includes("month")
@@ -357,16 +307,14 @@ export default function ScanResult() {
               </td>
             </tr>
             <tr>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
+              <td >
                 10. Top-Level Domain (TLD)
               </td>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
+              <td >
                 {record.tld}
               </td>
               <td
                 style={{
-                  padding: "10px",
-                  border: "1px solid #ccc",
                   color:
                     record.tld === ".xyz" || record.tld === ".info"
                       ? "orange"
@@ -416,34 +364,8 @@ export default function ScanResult() {
             </p>
 
             <div style={{ display: "flex", gap: "15px" }}>
-              <button
-                onClick={() => handleDecision(false)}
-                style={{
-                  padding: "10px 20px",
-                  cursor: "pointer",
-                  backgroundColor: "#f0ad4e",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "4px",
-                  fontWeight: "bold",
-                }}
-              >
-                Mark false positive
-              </button>
-              <button
-                onClick={() => handleDecision(true)}
-                style={{
-                  padding: "10px 20px",
-                  cursor: "pointer",
-                  backgroundColor: "#d9534f",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "4px",
-                  fontWeight: "bold",
-                }}
-              >
-                Confirm phishing
-              </button>
+              <Button variant="warning" onClick={() => handleDecision(false)}>Mark false positive</Button>
+              <Button variant="danger" onClick={() => handleDecision(true)}>Confirm phishing</Button>
             </div>
           </>
         )}

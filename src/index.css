@@ -250,3 +250,124 @@ body {
 }
 
 
+/* UNIFIED BUTTON STYLES */
+.app-btn {
+  cursor: pointer;
+  border-radius: 4px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+
+.app-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Button Variants */
+.app-btn-default {
+  background-color: white;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+.app-btn-default:hover:not(:disabled) {
+  background-color: #f8fafc;
+}
+.app-btn-default.active {
+  background-color: #e2e8f0;
+  font-weight: bold;
+}
+
+.app-btn-primary {
+  background-color: #007bff;
+  color: white;
+}
+.app-btn-primary:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.app-btn-secondary {
+  background-color: #6c757d;
+  color: white;
+}
+.app-btn-secondary:hover:not(:disabled) {
+  background-color: #5a6268;
+}
+
+.app-btn-danger {
+  background-color: #d9534f;
+  color: white;
+}
+.app-btn-danger:hover:not(:disabled) {
+  background-color: #c9302c;
+}
+
+.app-btn-warning {
+  background-color: #f0ad4e;
+  color: white;
+}
+.app-btn-warning:hover:not(:disabled) {
+  background-color: #ec971f;
+}
+
+.app-btn-outline {
+  background-color: transparent;
+  border-color: black;
+  color: black;
+}
+.app-btn-outline:hover:not(:disabled) {
+  background-color: #f8fafc;
+}
+
+.app-btn-text {
+  background-color: transparent;
+  color: #007bff;
+  border-color: transparent;
+}
+.app-btn-text:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+/* Button Sizes */
+.app-btn-small {
+  padding: 5px 10px;
+  font-size: 13px;
+}
+
+.app-btn-medium {
+  padding: 8px 16px;
+  font-size: 14px;
+}
+
+.app-btn-large {
+  padding: 10px 24px;
+  font-size: 16px;
+}
+
+.app-btn-full {
+  width: 100%;
+}
+
+/* UNIFIED TABLE STYLES */
+.app-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  background-color: #fff;
+}
+
+.app-table th {
+  padding: 12px;
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
+  font-weight: bold;
+}
+
+.app-table td {
+  padding: 12px;
+  border: 1px solid #ccc;
+}

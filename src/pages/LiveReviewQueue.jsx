@@ -2,6 +2,7 @@ import { useState } from "react";
 import Header from "../components/Header";
 import { useScanData } from "../context/ScanDataContext";
 import { useNavigate } from "react-router-dom";
+import Button from "../components/Button";
 import { getRiskLevel, getRiskColor } from "../utils/risk";
 
 export default function LiveReviewQueue() {
@@ -60,13 +61,7 @@ export default function LiveReviewQueue() {
           <option value="Medium">Medium Risk</option>
           <option value="Low">Low Risk</option>
         </select>
-        <button 
-          type="button" 
-          className="btn-manual-scan"
-          onClick={handleClearFilters}
-        >
-          CLEAR FILTERS
-        </button>
+        <Button variant="outline" size="small" onClick={handleClearFilters}>CLEAR FILTERS</Button>
       </section>
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
@@ -77,34 +72,8 @@ export default function LiveReviewQueue() {
           <span style={{ fontSize: "14px", color: "#64748b" }}>
             Page {currentPage} of {totalPages}
           </span>
-          <button
-            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
-            style={{
-              padding: "4px 10px",
-              border: "1px solid #e2e8f0",
-              backgroundColor: currentPage === 1 ? "#f8fafc" : "#fff",
-              color: currentPage === 1 ? "#94a3b8" : "#0f172a",
-              cursor: currentPage === 1 ? "not-allowed" : "pointer",
-              borderRadius: "4px"
-            }}
-          >
-            Previous
-          </button>
-          <button
-            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages}
-            style={{
-              padding: "4px 10px",
-              border: "1px solid #e2e8f0",
-              backgroundColor: currentPage === totalPages ? "#f8fafc" : "#fff",
-              color: currentPage === totalPages ? "#94a3b8" : "#0f172a",
-              cursor: currentPage === totalPages ? "not-allowed" : "pointer",
-              borderRadius: "4px"
-            }}
-          >
-            Next
-          </button>
+          <Button variant="default" size="small" disabled={currentPage === 1} onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}>Previous</Button>
+          <Button variant="default" size="small" disabled={currentPage === totalPages} onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}>Next</Button>
         </div>
       </div>
 
@@ -112,40 +81,28 @@ export default function LiveReviewQueue() {
         className="history-box"
         style={{ overflowX: "auto", padding: "0", border: "none" }}
       >
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            textAlign: "left",
-            backgroundColor: "#fff",
-          }}
-        >
+        <table className="app-table">
           <thead>
-            <tr
-              style={{
-                backgroundColor: "#f0f0f0",
-                borderBottom: "2px solid #ccc",
-              }}
-            >
-              <th style={{ padding: "12px" }}>ID</th>
-              <th style={{ padding: "12px" }}>Domain Name</th>
-              <th style={{ padding: "12px" }}>TLD</th>
-              <th style={{ padding: "12px" }}>Risk Score</th>
-              <th style={{ padding: "12px" }}>Prediction</th>
-              <th style={{ padding: "12px" }}>Review Status</th>
-              <th style={{ padding: "12px" }}>Decision</th>
-              <th style={{ padding: "12px" }}>Action</th>
+            <tr>
+              <th>ID</th>
+              <th>Domain Name</th>
+              <th>TLD</th>
+              <th>Risk Score</th>
+              <th>Prediction</th>
+              <th>Review Status</th>
+              <th>Decision</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody>
             {currentRecords.length > 0 ? (
               currentRecords.map((record) => (
                 <tr key={record.id} style={{ borderBottom: "1px solid #eee" }}>
-                  <td style={{ padding: "12px" }}>{record.id}</td>
-                  <td style={{ padding: "12px", fontWeight: "bold" }}>
+                  <td>{record.id}</td>
+                  <td>
                     {record.domain}
                   </td>
-                  <td style={{ padding: "12px" }}>{record.tld}</td>
+                  <td>{record.tld}</td>
                   <td
                     style={{
                       padding: "12px",
@@ -164,28 +121,16 @@ export default function LiveReviewQueue() {
                   >
                     {record.prediction}
                   </td>
-                  <td style={{ padding: "12px" }}>{record.review_status || "Pending"}</td>
-                  <td style={{ padding: "12px" }}>{record.decision || "-"}</td>
-                  <td style={{ padding: "12px" }}>
-                    <button
-                      onClick={() => navigate(`/review/live/${record.id}`)}
-                      style={{
-                        padding: "5px 10px",
-                        cursor: "pointer",
-                        backgroundColor: "#007bff",
-                        color: "white",
-                        border: "none",
-                        borderRadius: "4px",
-                      }}
-                    >
-                      View Result
-                    </button>
+                  <td>{record.review_status || "Pending"}</td>
+                  <td>{record.decision || "-"}</td>
+                  <td>
+                    <Button variant="primary" size="small" onClick={() => navigate(`/review/live/${record.id}`)}>View Result</Button>
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan="8" style={{ padding: "12px", textAlign: "center" }}>
+                <td colSpan="8" style={{ textAlign: "center" }}>
                   No records found matching your filters.
                 </td>
               </tr>
