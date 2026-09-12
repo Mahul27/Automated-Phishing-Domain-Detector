@@ -234,8 +234,22 @@ export default function LiveDashboard() {
             <span style={{ fontSize: "14px", color: "#64748b" }}>
               Page {currentPage} of {totalPages}
             </span>
-            <Button variant="default" size="small" disabled={currentPage === 1} onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}>Previous</Button>
-            <Button variant="default" size="small" disabled={currentPage === totalPages} onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}>Next</Button>
+            <Button
+              variant="default"
+              size="small"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="default"
+              size="small"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            >
+              Next
+            </Button>
           </div>
         </div>
         <div className="alerts-table-container" style={{ overflowX: "auto" }}>
@@ -273,18 +287,128 @@ export default function LiveDashboard() {
 
       <section className="bottom-row">
         <div className="info-card">
-          <h3>RISK DISTRIBUTION</h3>
-          <ul style={{ listStyleType: "none", padding: 0 }}>
-            <li style={{ padding: "4px 0" }}>
-              Low: <strong>{riskDistribution.Low}</strong>
-            </li>
-            <li style={{ padding: "4px 0" }}>
-              Medium: <strong>{riskDistribution.Medium}</strong>
-            </li>
-            <li style={{ padding: "4px 0" }}>
-              High: <strong>{riskDistribution.High}</strong>
-            </li>
-          </ul>
+          <h3 style={{ marginBottom: "16px" }}>RISK DISTRIBUTION</h3>
+
+          {(() => {
+            const totalRisk =
+              riskDistribution.Low +
+              riskDistribution.Medium +
+              riskDistribution.High;
+            const lowPercent =
+              totalRisk > 0 ? (riskDistribution.Low / totalRisk) * 100 : 0;
+            const mediumPercent =
+              totalRisk > 0 ? (riskDistribution.Medium / totalRisk) * 100 : 0;
+            const highPercent =
+              totalRisk > 0 ? (riskDistribution.High / totalRisk) * 100 : 0;
+
+            return (
+              <>
+                <div
+                  style={{
+                    display: "flex",
+                    width: "100%",
+                    height: "20px",
+                    borderRadius: "10px",
+                    overflow: "hidden",
+                    marginBottom: "16px",
+                    backgroundColor: "#e2e8f0",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: `${lowPercent}%`,
+                      backgroundColor: "#22c55e",
+                      transition: "width 0.3s ease",
+                    }}
+                    title={`Low: ${riskDistribution.Low}`}
+                  />
+                  <div
+                    style={{
+                      width: `${mediumPercent}%`,
+                      backgroundColor: "#f59e0b",
+                      transition: "width 0.3s ease",
+                    }}
+                    title={`Medium: ${riskDistribution.Medium}`}
+                  />
+                  <div
+                    style={{
+                      width: `${highPercent}%`,
+                      backgroundColor: "#ef4444",
+                      transition: "width 0.3s ease",
+                    }}
+                    title={`High: ${riskDistribution.High}`}
+                  />
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: "14px",
+                    color: "#64748b",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: "10px",
+                        height: "10px",
+                        backgroundColor: "#22c55e",
+                        borderRadius: "50%",
+                      }}
+                    />
+                    <span>
+                      Low <strong>{riskDistribution.Low}</strong>
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: "10px",
+                        height: "10px",
+                        backgroundColor: "#f59e0b",
+                        borderRadius: "50%",
+                      }}
+                    />
+                    <span>
+                      Medium <strong>{riskDistribution.Medium}</strong>
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: "10px",
+                        height: "10px",
+                        backgroundColor: "#ef4444",
+                        borderRadius: "50%",
+                      }}
+                    />
+                    <span>
+                      High <strong>{riskDistribution.High}</strong>
+                    </span>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
         </div>
         <div className="info-card">
           <h3>SYSTEM STATUS</h3>
