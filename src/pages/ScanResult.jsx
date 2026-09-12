@@ -1,3 +1,4 @@
+import { useState } from "react";
 import Header from "../components/Header";
 import { useParams, useNavigate } from "react-router-dom";
 import { useScanData } from "../context/ScanDataContext";
@@ -13,6 +14,9 @@ export default function ScanResult() {
     updatePersonalRecord,
     updateLiveRecord,
   } = useScanData();
+
+  const [reviewStatus, setReviewStatus] = useState("pending");
+  const [analystNote, setAnalystNote] = useState("");
 
   // Find the specific record from either live or personal data
   const searchId = parseInt(id);
@@ -41,14 +45,19 @@ export default function ScanResult() {
     );
   }
 
-  const handleDecision = (isPhishing) => {
+  const handleSaveDecision = () => {
+    if (reviewStatus === "pending") {
+      navigate(isPersonalRecord ? "/workspace" : "/queue");
+      return;
+    }
+
     const updatedRecord = { ...record };
     updatedRecord.review_status = "Completed";
-    updatedRecord.decision = isPhishing
-      ? "Confirmed Phishing"
-      : "False Positive";
+    updatedRecord.decision =
+      reviewStatus === "phishing" ? "Confirmed Phishing" : "False Positive";
     updatedRecord.reviewer = "Current Analyst";
     updatedRecord.review_date = new Date().toISOString().split("T")[0];
+    updatedRecord.note = analystNote;
 
     if (isPersonalRecord) {
       updatePersonalRecord(updatedRecord);
@@ -318,35 +327,184 @@ export default function ScanResult() {
             <h2 style={{ color: "green", marginBottom: "10px", marginTop: 0 }}>
               Decision Recorded
             </h2>
-            <p>
+            <p style={{ marginBottom: "12px" }}>
               This scan was reviewed by <strong>{record.reviewer}</strong> on{" "}
               <strong>{record.review_date}</strong>. The final decision was{" "}
               <strong>{record.decision}</strong>.
             </p>
+            {record.note && (
+              <div
+                style={{
+                  padding: "16px",
+                  backgroundColor: "#f8f9fa",
+                  borderRadius: "6px",
+                  borderLeft: "4px solid #cbd5e1",
+                }}
+              >
+                <h4
+                  style={{
+                    marginTop: 0,
+                    marginBottom: "8px",
+                    fontSize: "14px",
+                    color: "#475569",
+                  }}
+                >
+                  Analyst Note
+                </h4>
+                <p
+                  style={{
+                    margin: 0,
+                    whiteSpace: "pre-wrap",
+                    color: "#334155",
+                    lineHeight: "1.5",
+                  }}
+                >
+                  {record.note}
+                </p>
+              </div>
+            )}
           </div>
         ) : (
           <>
-            <h2
-              style={{ color: "#d9534f", marginBottom: "10px", marginTop: 0 }}
-            >
-              Human decision required
-            </h2>
-            <p style={{ marginBottom: "5px" }}>
-              This score is not confirmed yet. Please wait for the analyst to
-              review it.
-            </p>
-            <p style={{ marginBottom: "20px" }}>
-              Review the evidence before recording a final decision.
+            <h2 style={{ marginBottom: "10px", marginTop: 0 }}>Human review</h2>
+            <h3 style={{ marginBottom: "5px", fontSize: "16px" }}>
+              Record your decision
+            </h3>
+            <p style={{ marginBottom: "20px", color: "#64748b" }}>
+              Your decision is kept separately from the calculated risk score.
             </p>
 
-            <div style={{ display: "flex", gap: "15px" }}>
-              <Button variant="warning" onClick={() => handleDecision(false)}>
-                Mark false positive
-              </Button>
-              <Button variant="danger" onClick={() => handleDecision(true)}>
-                Confirm phishing
-              </Button>
+            <div style={{ marginBottom: "24px" }}>
+              <h4 style={{ marginBottom: "12px", fontSize: "14px" }}>
+                Review status
+              </h4>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "12px",
+                }}
+              >
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: "8px",
+                    cursor: "pointer",
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="reviewStatus"
+                    value="pending"
+                    checked={reviewStatus === "pending"}
+                    onChange={(e) => setReviewStatus(e.target.value)}
+                    style={{ marginTop: "4px" }}
+                  />
+                  <div>
+                    <div style={{ fontWeight: "bold", fontSize: "14px" }}>
+                      Keep pending
+                    </div>
+                    <div style={{ color: "#64748b", fontSize: "13px" }}>
+                      Leave this record open
+                    </div>
+                  </div>
+                </label>
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: "8px",
+                    cursor: "pointer",
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="reviewStatus"
+                    value="phishing"
+                    checked={reviewStatus === "phishing"}
+                    onChange={(e) => setReviewStatus(e.target.value)}
+                    style={{ marginTop: "4px" }}
+                  />
+                  <div>
+                    <div style={{ fontWeight: "bold", fontSize: "14px" }}>
+                      Phishing
+                    </div>
+                    <div style={{ color: "#64748b", fontSize: "13px" }}>
+                      Record an analyst finding
+                    </div>
+                  </div>
+                </label>
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: "8px",
+                    cursor: "pointer",
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="reviewStatus"
+                    value="not_phishing"
+                    checked={reviewStatus === "not_phishing"}
+                    onChange={(e) => setReviewStatus(e.target.value)}
+                    style={{ marginTop: "4px" }}
+                  />
+                  <div>
+                    <div style={{ fontWeight: "bold", fontSize: "14px" }}>
+                      Not phishing
+                    </div>
+                    <div style={{ color: "#64748b", fontSize: "13px" }}>
+                      Dismiss the suspected threat
+                    </div>
+                  </div>
+                </label>
+              </div>
             </div>
+
+            <div style={{ marginBottom: "24px" }}>
+              <h4 style={{ marginBottom: "8px", fontSize: "14px" }}>
+                Analyst note (optional)
+              </h4>
+              <p
+                style={{
+                  fontSize: "13px",
+                  color: "#64748b",
+                  margin: "0 0 8px 0",
+                }}
+              >
+                What led you to this decision?
+              </p>
+              <textarea
+                value={analystNote}
+                onChange={(e) => setAnalystNote(e.target.value.slice(0, 2000))}
+                style={{
+                  width: "100%",
+                  minHeight: "100px",
+                  padding: "12px",
+                  border: "1px solid #ccc",
+                  borderRadius: "4px",
+                  boxSizing: "border-box",
+                  fontFamily: "inherit",
+                  resize: "vertical",
+                }}
+              />
+              <div
+                style={{
+                  textAlign: "right",
+                  fontSize: "12px",
+                  color: "#64748b",
+                  marginTop: "4px",
+                }}
+              >
+                {analystNote.length} / 2,000 characters
+              </div>
+            </div>
+
+            <Button variant="primary" onClick={handleSaveDecision}>
+              Save decision
+            </Button>
           </>
         )}
       </section>

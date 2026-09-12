@@ -10,12 +10,14 @@ export default function LiveReviewQueue() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [riskFilter, setRiskFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 15;
 
   const handleClearFilters = () => {
     setSearchTerm("");
     setRiskFilter("All");
+    setStatusFilter("All");
     setCurrentPage(1);
   };
 
@@ -29,7 +31,22 @@ export default function LiveReviewQueue() {
       matchesRisk = getRiskLevel(record.risk_score) === riskFilter;
     }
 
-    return matchesSearch && matchesRisk;
+    let matchesStatus = true;
+    if (statusFilter === "Pending review") {
+      matchesStatus = record.review_status !== "Completed";
+    } else if (statusFilter === "Reviewed · all decisions") {
+      matchesStatus = record.review_status === "Completed";
+    } else if (statusFilter === "Confirmed phishing") {
+      matchesStatus =
+        record.review_status === "Completed" &&
+        record.decision === "Confirmed Phishing";
+    } else if (statusFilter === "Not phishing") {
+      matchesStatus =
+        record.review_status === "Completed" &&
+        record.decision === "False Positive";
+    }
+
+    return matchesSearch && matchesRisk && matchesStatus;
   });
 
   const totalPages = Math.max(
@@ -71,6 +88,22 @@ export default function LiveReviewQueue() {
           <option value="High">High Risk</option>
           <option value="Medium">Medium Risk</option>
           <option value="Low">Low Risk</option>
+        </select>
+        <select
+          className="filter-select"
+          value={statusFilter}
+          onChange={(e) => {
+            setStatusFilter(e.target.value);
+            setCurrentPage(1);
+          }}
+        >
+          <option value="All">All review statuses</option>
+          <option value="Pending review">Pending review</option>
+          <option value="Reviewed · all decisions">
+            Reviewed &middot; all decisions
+          </option>
+          <option value="Confirmed phishing">Confirmed phishing</option>
+          <option value="Not phishing">Not phishing</option>
         </select>
         <Button variant="outline" size="small" onClick={handleClearFilters}>
           CLEAR FILTERS
