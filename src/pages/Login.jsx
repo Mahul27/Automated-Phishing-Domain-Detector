@@ -19,7 +19,7 @@ export default function Login() {
     // Check against local storage or default admin
     if (
       (username === storedEmail && password === storedPassword) ||
-      (username === 'admin' && password === 'password')
+      (username === "admin" && password === "password")
     ) {
       localStorage.setItem("activeUser", username);
       navigate("/dashboard");
@@ -39,7 +39,11 @@ export default function Login() {
 
         <main className="content">
           <section className="image-section">
-            <img src={logo} alt="Threat Hunters Logo" style={{ width: '100%', height: 'auto', borderRadius: '8px' }} />
+            <img
+              src={logo}
+              alt="Threat Hunters Logo"
+              style={{ width: "100%", height: "auto", borderRadius: "8px" }}
+            />
           </section>
 
           <section className="login-section">
@@ -68,7 +72,7 @@ export default function Login() {
                 />
               </div>
 
-              <div className="form-row" style={{ justifyContent: 'flex-end' }}>
+              <div className="form-row" style={{ justifyContent: "flex-end" }}>
                 <Link to="/forgot-password">Forgot password?</Link>
               </div>
 

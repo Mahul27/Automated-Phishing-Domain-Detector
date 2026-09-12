@@ -20,8 +20,10 @@ export default function LiveReviewQueue() {
   };
 
   const filteredData = demoData.filter((record) => {
-    const matchesSearch = record.domain.toLowerCase().includes(searchTerm.toLowerCase());
-    
+    const matchesSearch = record.domain
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
+
     let matchesRisk = true;
     if (riskFilter !== "All") {
       matchesRisk = getRiskLevel(record.risk_score) === riskFilter;
@@ -30,10 +32,13 @@ export default function LiveReviewQueue() {
     return matchesSearch && matchesRisk;
   });
 
-  const totalPages = Math.max(1, Math.ceil(filteredData.length / recordsPerPage));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredData.length / recordsPerPage),
+  );
   const currentRecords = filteredData.slice(
     (currentPage - 1) * recordsPerPage,
-    currentPage * recordsPerPage
+    currentPage * recordsPerPage,
   );
 
   return (
@@ -49,22 +54,37 @@ export default function LiveReviewQueue() {
           className="search-input"
           placeholder="Search by domain"
           value={searchTerm}
-          onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setCurrentPage(1);
+          }}
         />
-        <select 
-          className="filter-select" 
+        <select
+          className="filter-select"
           value={riskFilter}
-          onChange={(e) => { setRiskFilter(e.target.value); setCurrentPage(1); }}
+          onChange={(e) => {
+            setRiskFilter(e.target.value);
+            setCurrentPage(1);
+          }}
         >
           <option value="All">All Risk Levels</option>
           <option value="High">High Risk</option>
           <option value="Medium">Medium Risk</option>
           <option value="Low">Low Risk</option>
         </select>
-        <Button variant="outline" size="small" onClick={handleClearFilters}>CLEAR FILTERS</Button>
+        <Button variant="outline" size="small" onClick={handleClearFilters}>
+          CLEAR FILTERS
+        </Button>
       </section>
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "10px",
+        }}
+      >
         <div style={{ fontSize: "13px" }}>
           Showing {filteredData.length} detection records
         </div>
@@ -72,8 +92,22 @@ export default function LiveReviewQueue() {
           <span style={{ fontSize: "14px", color: "#64748b" }}>
             Page {currentPage} of {totalPages}
           </span>
-          <Button variant="default" size="small" disabled={currentPage === 1} onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}>Previous</Button>
-          <Button variant="default" size="small" disabled={currentPage === totalPages} onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}>Next</Button>
+          <Button
+            variant="default"
+            size="small"
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+          >
+            Previous
+          </Button>
+          <Button
+            variant="default"
+            size="small"
+            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+          >
+            Next
+          </Button>
         </div>
       </div>
 
@@ -99,9 +133,7 @@ export default function LiveReviewQueue() {
               currentRecords.map((record) => (
                 <tr key={record.id} style={{ borderBottom: "1px solid #eee" }}>
                   <td>{record.id}</td>
-                  <td>
-                    {record.domain}
-                  </td>
+                  <td>{record.domain}</td>
                   <td>{record.tld}</td>
                   <td
                     style={{
@@ -124,7 +156,13 @@ export default function LiveReviewQueue() {
                   <td>{record.review_status || "Pending"}</td>
                   <td>{record.decision || "-"}</td>
                   <td>
-                    <Button variant="primary" size="small" onClick={() => navigate(`/review/live/${record.id}`)}>View Result</Button>
+                    <Button
+                      variant="primary"
+                      size="small"
+                      onClick={() => navigate(`/review/live/${record.id}`)}
+                    >
+                      View Result
+                    </Button>
                   </td>
                 </tr>
               ))

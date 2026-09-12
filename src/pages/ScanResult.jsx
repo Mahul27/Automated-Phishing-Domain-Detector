@@ -7,12 +7,17 @@ import Button from "../components/Button";
 export default function ScanResult() {
   const { source, id } = useParams();
   const navigate = useNavigate();
-  const { personalRecords, liveRecords, updatePersonalRecord, updateLiveRecord } = useScanData();
+  const {
+    personalRecords,
+    liveRecords,
+    updatePersonalRecord,
+    updateLiveRecord,
+  } = useScanData();
 
   // Find the specific record from either live or personal data
   const searchId = parseInt(id);
   const isPersonalRecord = source === "personal";
-  const record = isPersonalRecord 
+  const record = isPersonalRecord
     ? personalRecords.find((r) => r.id === searchId)
     : liveRecords.find((r) => r.id === searchId);
 
@@ -25,7 +30,12 @@ export default function ScanResult() {
         />
         <div style={{ padding: "20px", textAlign: "center" }}>
           <h2>Scan result not found.</h2>
-          <Button variant="secondary" onClick={() => navigate(isPersonalRecord ? "/workspace" : "/queue")}>&larr; Return to Scan History</Button>
+          <Button
+            variant="secondary"
+            onClick={() => navigate(isPersonalRecord ? "/workspace" : "/queue")}
+          >
+            &larr; Return to Scan History
+          </Button>
         </div>
       </>
     );
@@ -34,7 +44,9 @@ export default function ScanResult() {
   const handleDecision = (isPhishing) => {
     const updatedRecord = { ...record };
     updatedRecord.review_status = "Completed";
-    updatedRecord.decision = isPhishing ? "Confirmed Phishing" : "False Positive";
+    updatedRecord.decision = isPhishing
+      ? "Confirmed Phishing"
+      : "False Positive";
     updatedRecord.reviewer = "Current Analyst";
     updatedRecord.review_date = new Date().toISOString().split("T")[0];
 
@@ -54,7 +66,12 @@ export default function ScanResult() {
       />
 
       <div style={{ marginBottom: "15px" }}>
-        <Button variant="secondary" onClick={() => navigate(isPersonalRecord ? "/workspace" : "/queue")}>&larr; Back to History</Button>
+        <Button
+          variant="secondary"
+          onClick={() => navigate(isPersonalRecord ? "/workspace" : "/queue")}
+        >
+          &larr; Back to History
+        </Button>
       </div>
 
       {/* 1. Summary Information */}
@@ -96,10 +113,12 @@ export default function ScanResult() {
           {record.review_status === "Completed" && (
             <>
               <li style={{ marginBottom: "10px" }}>
-                <strong>Review Status:</strong> <span>{record.review_status}</span>
+                <strong>Review Status:</strong>{" "}
+                <span>{record.review_status}</span>
               </li>
               <li style={{ marginBottom: "10px" }}>
-                <strong>Analyst Decision:</strong> <span>{record.decision}</span>
+                <strong>Analyst Decision:</strong>{" "}
+                <span>{record.decision}</span>
               </li>
               <li style={{ marginBottom: "10px" }}>
                 <strong>Reviewer:</strong> <span>{record.reviewer}</span>
@@ -126,25 +145,15 @@ export default function ScanResult() {
         <table className="app-table" style={{ marginTop: "10px" }}>
           <thead>
             <tr style={{ backgroundColor: "#f0f0f0", textAlign: "left" }}>
-              <th >
-                Feature
-              </th>
-              <th >
-                Detected Value
-              </th>
-              <th >
-                Risk Indicator
-              </th>
+              <th>Feature</th>
+              <th>Detected Value</th>
+              <th>Risk Indicator</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td >
-                1. Domain Age
-              </td>
-              <td >
-                {record.domain_age}
-              </td>
+              <td>1. Domain Age</td>
+              <td>{record.domain_age}</td>
               <td
                 style={{
                   color:
@@ -162,12 +171,8 @@ export default function ScanResult() {
               </td>
             </tr>
             <tr>
-              <td >
-                2. Registration Period
-              </td>
-              <td >
-                {record.registration_period}
-              </td>
+              <td>2. Registration Period</td>
+              <td>{record.registration_period}</td>
               <td
                 style={{
                   color:
@@ -181,12 +186,8 @@ export default function ScanResult() {
               </td>
             </tr>
             <tr>
-              <td >
-                3. Domain Length
-              </td>
-              <td >
-                {record.domain_length} characters
-              </td>
+              <td>3. Domain Length</td>
+              <td>{record.domain_length} characters</td>
               <td
                 style={{
                   color: record.domain_length > 20 ? "orange" : "green",
@@ -197,12 +198,8 @@ export default function ScanResult() {
               </td>
             </tr>
             <tr>
-              <td >
-                4. Number of Hyphens
-              </td>
-              <td >
-                {record.hyphens} hyphens
-              </td>
+              <td>4. Number of Hyphens</td>
+              <td>{record.hyphens} hyphens</td>
               <td
                 style={{
                   color: record.hyphens > 1 ? "red" : "green",
@@ -213,12 +210,8 @@ export default function ScanResult() {
               </td>
             </tr>
             <tr>
-              <td >
-                5. Number of Digits
-              </td>
-              <td >
-                {record.digits} digits
-              </td>
+              <td>5. Number of Digits</td>
+              <td>{record.digits} digits</td>
               <td
                 style={{
                   color: record.digits > 0 ? "orange" : "green",
@@ -229,12 +222,8 @@ export default function ScanResult() {
               </td>
             </tr>
             <tr>
-              <td >
-                6. Shannon Entropy
-              </td>
-              <td >
-                {record.shannon_entropy} entropy
-              </td>
+              <td>6. Shannon Entropy</td>
+              <td>{record.shannon_entropy} entropy</td>
               <td
                 style={{
                   color: record.shannon_entropy === "High" ? "red" : "green",
@@ -245,12 +234,8 @@ export default function ScanResult() {
               </td>
             </tr>
             <tr>
-              <td >
-                7. Brand Keyword
-              </td>
-              <td >
-                {record.brand_keyword}
-              </td>
+              <td>7. Brand Keyword</td>
+              <td>{record.brand_keyword}</td>
               <td
                 style={{
                   color: record.brand_keyword !== "None" ? "red" : "green",
@@ -261,12 +246,8 @@ export default function ScanResult() {
               </td>
             </tr>
             <tr>
-              <td >
-                8. Typosquatting Similarity
-              </td>
-              <td >
-                {record.typosquatting_similarity}
-              </td>
+              <td>8. Typosquatting Similarity</td>
+              <td>{record.typosquatting_similarity}</td>
               <td
                 style={{
                   color:
@@ -284,12 +265,8 @@ export default function ScanResult() {
               </td>
             </tr>
             <tr>
-              <td >
-                9. SSL Certificate Age
-              </td>
-              <td >
-                {record.ssl_cert_age}
-              </td>
+              <td>9. SSL Certificate Age</td>
+              <td>{record.ssl_cert_age}</td>
               <td
                 style={{
                   color:
@@ -307,12 +284,8 @@ export default function ScanResult() {
               </td>
             </tr>
             <tr>
-              <td >
-                10. Top-Level Domain (TLD)
-              </td>
-              <td >
-                {record.tld}
-              </td>
+              <td>10. Top-Level Domain (TLD)</td>
+              <td>{record.tld}</td>
               <td
                 style={{
                   color:
@@ -353,19 +326,26 @@ export default function ScanResult() {
           </div>
         ) : (
           <>
-            <h2 style={{ color: "#d9534f", marginBottom: "10px", marginTop: 0 }}>
+            <h2
+              style={{ color: "#d9534f", marginBottom: "10px", marginTop: 0 }}
+            >
               Human decision required
             </h2>
             <p style={{ marginBottom: "5px" }}>
-              This score is not confirmed yet. Please wait for the analyst to review it.
+              This score is not confirmed yet. Please wait for the analyst to
+              review it.
             </p>
             <p style={{ marginBottom: "20px" }}>
               Review the evidence before recording a final decision.
             </p>
 
             <div style={{ display: "flex", gap: "15px" }}>
-              <Button variant="warning" onClick={() => handleDecision(false)}>Mark false positive</Button>
-              <Button variant="danger" onClick={() => handleDecision(true)}>Confirm phishing</Button>
+              <Button variant="warning" onClick={() => handleDecision(false)}>
+                Mark false positive
+              </Button>
+              <Button variant="danger" onClick={() => handleDecision(true)}>
+                Confirm phishing
+              </Button>
             </div>
           </>
         )}

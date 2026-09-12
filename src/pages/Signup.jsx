@@ -37,7 +37,11 @@ export default function Signup() {
 
         <main className="content">
           <section className="image-section">
-            <img src={logo} alt="Threat Hunters Logo" style={{ width: '100%', height: 'auto', borderRadius: '8px' }} />
+            <img
+              src={logo}
+              alt="Threat Hunters Logo"
+              style={{ width: "100%", height: "auto", borderRadius: "8px" }}
+            />
           </section>
 
           <section className="login-section">

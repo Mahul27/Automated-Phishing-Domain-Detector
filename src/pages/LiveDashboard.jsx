@@ -73,7 +73,7 @@ export default function LiveDashboard() {
           <div className="metric-sub">{domainsMonitored}</div>
         </div>
         <div className="metric-card">
-          <h3>CRITICAL ALERTS</h3>
+          <h3>HIGH-RISK ALERTS</h3>
           <div className="metric-sub">{criticalAlerts}</div>
         </div>
         <div className="metric-card">
@@ -220,71 +220,6 @@ export default function LiveDashboard() {
         </div>
       </section>
 
-      <section className="alerts-section">
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "16px",
-          }}
-        >
-          <h2 style={{ margin: 0 }}>Recent domain alerts</h2>
-          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-            <span style={{ fontSize: "14px", color: "#64748b" }}>
-              Page {currentPage} of {totalPages}
-            </span>
-            <Button
-              variant="default"
-              size="small"
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="default"
-              size="small"
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-        <div className="alerts-table-container" style={{ overflowX: "auto" }}>
-          <table className="app-table">
-            <thead>
-              <tr>
-                <th>Domain</th>
-                <th>Risk Score</th>
-                <th>Prediction</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {currentAlerts.map((alert) => (
-                <tr key={alert.id} style={{ borderBottom: "1px solid #eee" }}>
-                  <td>{alert.domain}</td>
-                  <td>{alert.risk_score}</td>
-                  <td
-                    style={{
-                      padding: "12px 8px",
-                      color:
-                        alert.prediction === "Phishing" ? "#d32f2f" : "#2e7d32",
-                      fontWeight: "bold",
-                    }}
-                  >
-                    {alert.prediction}
-                  </td>
-                  <td>{alert.review_status}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
       <section className="bottom-row">
         <div className="info-card">
           <h3 style={{ marginBottom: "16px" }}>RISK DISTRIBUTION</h3>
@@ -417,6 +352,71 @@ export default function LiveDashboard() {
             <li>Risk scoring: status</li>
             <li>Last data collection: Completed</li>
           </ul>
+        </div>
+      </section>
+
+      <section className="alerts-section">
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "16px",
+          }}
+        >
+          <h2 style={{ margin: 0 }}>Recent domain alerts</h2>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            <span style={{ fontSize: "14px", color: "#64748b" }}>
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button
+              variant="default"
+              size="small"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="default"
+              size="small"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+        <div className="alerts-table-container" style={{ overflowX: "auto" }}>
+          <table className="app-table">
+            <thead>
+              <tr>
+                <th>Domain</th>
+                <th>Risk Score</th>
+                <th>Prediction</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {currentAlerts.map((alert) => (
+                <tr key={alert.id} style={{ borderBottom: "1px solid #eee" }}>
+                  <td>{alert.domain}</td>
+                  <td>{alert.risk_score}</td>
+                  <td
+                    style={{
+                      padding: "12px 8px",
+                      color:
+                        alert.prediction === "Phishing" ? "#d32f2f" : "#2e7d32",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {alert.prediction}
+                  </td>
+                  <td>{alert.review_status}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </section>
     </>

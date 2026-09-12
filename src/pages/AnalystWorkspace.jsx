@@ -214,7 +214,8 @@ export default function AnalystWorkspace() {
   const filteredRecords = personalRecords.filter(
     (r) =>
       r.domain.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (r.original && r.original.toLowerCase().includes(searchTerm.toLowerCase())),
+      (r.original &&
+        r.original.toLowerCase().includes(searchTerm.toLowerCase())),
   );
 
   return (
@@ -227,7 +228,9 @@ export default function AnalystWorkspace() {
       <div className="metrics-row">
         <div className="metric-card">
           <h3>My records</h3>
-          <div className="metric-sub">{personalRecords.length + (domain ? 1 : 0)}</div>
+          <div className="metric-sub">
+            {personalRecords.length + (domain ? 1 : 0)}
+          </div>
           <p style={{ fontSize: "12px", color: "#64748b" }}>
             Manual + imported
           </p>
@@ -248,7 +251,9 @@ export default function AnalystWorkspace() {
         </div>
         <div className="metric-card">
           <h3>Awaiting review</h3>
-          <div className="metric-sub">{personalRecords.length + (domain ? 1 : 0)}</div>
+          <div className="metric-sub">
+            {personalRecords.length + (domain ? 1 : 0)}
+          </div>
           <p style={{ fontSize: "12px", color: "#64748b" }}>
             Analyst decisions needed
           </p>
@@ -256,9 +261,27 @@ export default function AnalystWorkspace() {
       </div>
 
       <div style={{ marginBottom: "20px", display: "flex", gap: "10px" }}>
-        <Button variant="default" className={activeTab === "my_records" ? "active" : ""} onClick={() => setActiveTab("my_records")}>My records</Button>
-        <Button variant="default" className={activeTab === "manual_search" ? "active" : ""} onClick={() => setActiveTab("manual_search")}>Manual search</Button>
-        <Button variant="default" className={activeTab === "import_csv" ? "active" : ""} onClick={() => setActiveTab("import_csv")}>Import CSV / JSON</Button>
+        <Button
+          variant="default"
+          className={activeTab === "my_records" ? "active" : ""}
+          onClick={() => setActiveTab("my_records")}
+        >
+          My records
+        </Button>
+        <Button
+          variant="default"
+          className={activeTab === "manual_search" ? "active" : ""}
+          onClick={() => setActiveTab("manual_search")}
+        >
+          Manual search
+        </Button>
+        <Button
+          variant="default"
+          className={activeTab === "import_csv" ? "active" : ""}
+          onClick={() => setActiveTab("import_csv")}
+        >
+          Import CSV / JSON
+        </Button>
       </div>
 
       {activeTab === "my_records" && (
@@ -317,8 +340,8 @@ export default function AnalystWorkspace() {
             }}
           >
             <span style={{ fontSize: "14px" }}>
-              <strong>{filteredRecords.length}</strong> of {personalRecords.length}{" "}
-              records
+              <strong>{filteredRecords.length}</strong> of{" "}
+              {personalRecords.length} records
             </span>
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
               <span style={{ fontSize: "12px" }}>Sort by</span>
@@ -348,20 +371,37 @@ export default function AnalystWorkspace() {
                       {item.original ? `IMPORT - ${item.original}` : "MANUAL"}
                     </div>
                   </td>
-                  <td style={{ color: item.risk_score > 75 ? "red" : "orange" }}>
-                    {item.risk_score ? item.prediction : 'Critical'}
+                  <td
+                    style={{ color: item.risk_score > 75 ? "red" : "orange" }}
+                  >
+                    {item.risk_score ? item.prediction : "Critical"}
                   </td>
-                  <td style={{ color: item.risk_score > 75 ? "red" : "orange" }}>
-                    {item.risk_score ? item.risk_score : '86'}
+                  <td
+                    style={{ color: item.risk_score > 75 ? "red" : "orange" }}
+                  >
+                    {item.risk_score ? item.risk_score : "86"}
                   </td>
-                  <td style={{ color: item.review_status === 'Completed' ? "green" : "#d97706" }}>
-                    {item.review_status || 'Pending review'}
+                  <td
+                    style={{
+                      color:
+                        item.review_status === "Completed"
+                          ? "green"
+                          : "#d97706",
+                    }}
+                  >
+                    {item.review_status || "Pending review"}
                   </td>
                   <td style={{ color: "gray", fontSize: "12px" }}>
-                    {item.review_date || '08 Sept, 05:06 pm'}
+                    {item.review_date || "08 Sept, 05:06 pm"}
                   </td>
                   <td>
-                    <Button variant="text" size="small" onClick={() => navigate(`/review/personal/${item.id}`)}>Open &gt;</Button>
+                    <Button
+                      variant="text"
+                      size="small"
+                      onClick={() => navigate(`/review/personal/${item.id}`)}
+                    >
+                      Open &gt;
+                    </Button>
                   </td>
                 </tr>
               ))}
@@ -394,7 +434,14 @@ export default function AnalystWorkspace() {
                 placeholder="Enter a domain, for example: google.com"
                 disabled={loading}
               />
-              <Button type="submit" variant="outline" size="large" disabled={loading}>{loading ? "SCANNING..." : "SCAN DOMAIN"}</Button>
+              <Button
+                type="submit"
+                variant="outline"
+                size="large"
+                disabled={loading}
+              >
+                {loading ? "SCANNING..." : "SCAN DOMAIN"}
+              </Button>
             </div>
             {scanError && (
               <p style={{ color: "red", marginTop: "10px" }}>{scanError}</p>
@@ -447,7 +494,13 @@ export default function AnalystWorkspace() {
                 onChange={handleFileInputChange}
                 style={{ display: "none" }}
               />
-              <Button variant="outline" onClick={handleBrowseClick} style={{ marginTop: "10px" }}>BROWSE FILES</Button>
+              <Button
+                variant="outline"
+                onClick={handleBrowseClick}
+                style={{ marginTop: "10px" }}
+              >
+                BROWSE FILES
+              </Button>
             </>
           ) : (
             <div className="state-box">
@@ -456,7 +509,13 @@ export default function AnalystWorkspace() {
                 Type: {fileData.type} | Size: {fileSize} | Records parsed:{" "}
                 {personalRecords.length}
               </p>
-              <Button variant="outline" onClick={handleReset} style={{ marginTop: "10px" }}>UPLOAD DIFFERENT FILE</Button>
+              <Button
+                variant="outline"
+                onClick={handleReset}
+                style={{ marginTop: "10px" }}
+              >
+                UPLOAD DIFFERENT FILE
+              </Button>
             </div>
           )}
         </div>
