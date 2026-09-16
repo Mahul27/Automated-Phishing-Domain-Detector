@@ -1,5 +1,6 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import Button from "../components/Button";
 import logo from "../assets/logo.webp";
 
 export default function Signup() {
@@ -36,7 +37,11 @@ export default function Signup() {
 
         <main className="content">
           <section className="image-section">
-            <img src={logo} alt="Threat Hunters Logo" style={{ width: '100%', height: 'auto', borderRadius: '8px' }} />
+            <img
+              src={logo}
+              alt="Threat Hunters Logo"
+              style={{ width: "100%", height: "auto", borderRadius: "8px" }}
+            />
           </section>
 
           <section className="login-section">
@@ -74,9 +79,9 @@ export default function Signup() {
                 />
               </div>
 
-              <button type="submit" className="btn-login">
-                Sign Up
-              </button>
+              <Button type="submit" variant="outline" fullWidth size="large">
+                Create Account
+              </Button>
             </form>
 
             <div

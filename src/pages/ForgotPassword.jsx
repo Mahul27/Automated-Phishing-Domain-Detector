@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import Button from "../components/Button";
 import logo from "../assets/logo.webp";
 
 export default function ForgotPassword() {
@@ -80,9 +81,9 @@ export default function ForgotPassword() {
                     required
                   />
                 </div>
-                <button type="submit" className="btn-login">
-                  Verify Email
-                </button>
+                <Button type="submit" variant="outline" fullWidth size="large">
+                  Send Code
+                </Button>
               </form>
             ) : (
               <form onSubmit={handleResetPassword}>
@@ -102,9 +103,9 @@ export default function ForgotPassword() {
                     required
                   />
                 </div>
-                <button type="submit" className="btn-login">
+                <Button type="submit" variant="outline" fullWidth size="large">
                   Reset Password
-                </button>
+                </Button>
               </form>
             )}
 

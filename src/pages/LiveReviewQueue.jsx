@@ -2,6 +2,7 @@ import { useState } from "react";
 import Header from "../components/Header";
 import { useScanData } from "../context/ScanDataContext";
 import { useNavigate } from "react-router-dom";
+import Button from "../components/Button";
 import { getRiskLevel, getRiskColor } from "../utils/risk";
 
 export default function LiveReviewQueue() {
@@ -9,30 +10,80 @@ export default function LiveReviewQueue() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [riskFilter, setRiskFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 15;
 
   const handleClearFilters = () => {
     setSearchTerm("");
     setRiskFilter("All");
+    setStatusFilter("All");
     setCurrentPage(1);
   };
 
   const filteredData = demoData.filter((record) => {
-    const matchesSearch = record.domain.toLowerCase().includes(searchTerm.toLowerCase());
-    
+    const matchesSearch = record.domain
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
+
     let matchesRisk = true;
     if (riskFilter !== "All") {
       matchesRisk = getRiskLevel(record.risk_score) === riskFilter;
     }
 
-    return matchesSearch && matchesRisk;
+    let matchesStatus = true;
+    if (statusFilter === "Pending review") {
+      matchesStatus = record.review_status !== "Completed";
+    } else if (statusFilter === "Reviewed · all decisions") {
+      matchesStatus = record.review_status === "Completed";
+    } else if (statusFilter === "Confirmed phishing") {
+      matchesStatus =
+        record.review_status === "Completed" &&
+        record.decision === "Confirmed Phishing";
+    } else if (statusFilter === "Not phishing") {
+      matchesStatus =
+        record.review_status === "Completed" &&
+        record.decision === "False Positive";
+    }
+
+    return matchesSearch && matchesRisk && matchesStatus;
   });
 
-  const totalPages = Math.max(1, Math.ceil(filteredData.length / recordsPerPage));
+  const exportToCSV = () => {
+    const headers = ["Domain ID", "Domain Name", "Risk Score", "Prediction", "Review Status", "Decision"];
+    const csvRows = [headers.join(",")];
+
+    for (const record of filteredData) {
+      const values = [
+        record.id,
+        record.domain,
+        record.risk_score,
+        record.prediction,
+        record.review_status || "Pending",
+        record.decision || "-"
+      ];
+      csvRows.push(values.map(v => `"${v}"`).join(","));
+    }
+
+    const csvString = csvRows.join("\n");
+    const blob = new Blob([csvString], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "live_queue_export.csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredData.length / recordsPerPage),
+  );
   const currentRecords = filteredData.slice(
     (currentPage - 1) * recordsPerPage,
-    currentPage * recordsPerPage
+    currentPage * recordsPerPage,
   );
 
   return (
@@ -48,28 +99,56 @@ export default function LiveReviewQueue() {
           className="search-input"
           placeholder="Search by domain"
           value={searchTerm}
-          onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setCurrentPage(1);
+          }}
         />
-        <select 
-          className="filter-select" 
+        <select
+          className="filter-select"
           value={riskFilter}
-          onChange={(e) => { setRiskFilter(e.target.value); setCurrentPage(1); }}
+          onChange={(e) => {
+            setRiskFilter(e.target.value);
+            setCurrentPage(1);
+          }}
         >
           <option value="All">All Risk Levels</option>
           <option value="High">High Risk</option>
           <option value="Medium">Medium Risk</option>
           <option value="Low">Low Risk</option>
         </select>
-        <button 
-          type="button" 
-          className="btn-manual-scan"
-          onClick={handleClearFilters}
+        <select
+          className="filter-select"
+          value={statusFilter}
+          onChange={(e) => {
+            setStatusFilter(e.target.value);
+            setCurrentPage(1);
+          }}
         >
+          <option value="All">All review statuses</option>
+          <option value="Pending review">Pending review</option>
+          <option value="Reviewed · all decisions">
+            Reviewed &middot; all decisions
+          </option>
+          <option value="Confirmed phishing">Confirmed phishing</option>
+          <option value="Not phishing">Not phishing</option>
+        </select>
+        <Button variant="outline" size="small" onClick={handleClearFilters}>
           CLEAR FILTERS
-        </button>
+        </Button>
+        <Button variant="primary" size="small" onClick={exportToCSV}>
+          EXPORT CSV
+        </Button>
       </section>
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "10px",
+        }}
+      >
         <div style={{ fontSize: "13px" }}>
           Showing {filteredData.length} detection records
         </div>
@@ -77,34 +156,22 @@ export default function LiveReviewQueue() {
           <span style={{ fontSize: "14px", color: "#64748b" }}>
             Page {currentPage} of {totalPages}
           </span>
-          <button
-            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+          <Button
+            variant="default"
+            size="small"
             disabled={currentPage === 1}
-            style={{
-              padding: "4px 10px",
-              border: "1px solid #e2e8f0",
-              backgroundColor: currentPage === 1 ? "#f8fafc" : "#fff",
-              color: currentPage === 1 ? "#94a3b8" : "#0f172a",
-              cursor: currentPage === 1 ? "not-allowed" : "pointer",
-              borderRadius: "4px"
-            }}
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
           >
             Previous
-          </button>
-          <button
-            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+          </Button>
+          <Button
+            variant="default"
+            size="small"
             disabled={currentPage === totalPages}
-            style={{
-              padding: "4px 10px",
-              border: "1px solid #e2e8f0",
-              backgroundColor: currentPage === totalPages ? "#f8fafc" : "#fff",
-              color: currentPage === totalPages ? "#94a3b8" : "#0f172a",
-              cursor: currentPage === totalPages ? "not-allowed" : "pointer",
-              borderRadius: "4px"
-            }}
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
           >
             Next
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -112,40 +179,26 @@ export default function LiveReviewQueue() {
         className="history-box"
         style={{ overflowX: "auto", padding: "0", border: "none" }}
       >
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            textAlign: "left",
-            backgroundColor: "#fff",
-          }}
-        >
+        <table className="app-table">
           <thead>
-            <tr
-              style={{
-                backgroundColor: "#f0f0f0",
-                borderBottom: "2px solid #ccc",
-              }}
-            >
-              <th style={{ padding: "12px" }}>ID</th>
-              <th style={{ padding: "12px" }}>Domain Name</th>
-              <th style={{ padding: "12px" }}>TLD</th>
-              <th style={{ padding: "12px" }}>Risk Score</th>
-              <th style={{ padding: "12px" }}>Prediction</th>
-              <th style={{ padding: "12px" }}>Review Status</th>
-              <th style={{ padding: "12px" }}>Decision</th>
-              <th style={{ padding: "12px" }}>Action</th>
+            <tr>
+              <th>ID</th>
+              <th>Domain Name</th>
+              <th>TLD</th>
+              <th>Risk Score</th>
+              <th>Prediction</th>
+              <th>Review Status</th>
+              <th>Decision</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody>
             {currentRecords.length > 0 ? (
               currentRecords.map((record) => (
                 <tr key={record.id} style={{ borderBottom: "1px solid #eee" }}>
-                  <td style={{ padding: "12px" }}>{record.id}</td>
-                  <td style={{ padding: "12px", fontWeight: "bold" }}>
-                    {record.domain}
-                  </td>
-                  <td style={{ padding: "12px" }}>{record.tld}</td>
+                  <td>{record.id}</td>
+                  <td>{record.domain}</td>
+                  <td>{record.tld}</td>
                   <td
                     style={{
                       padding: "12px",
@@ -164,28 +217,22 @@ export default function LiveReviewQueue() {
                   >
                     {record.prediction}
                   </td>
-                  <td style={{ padding: "12px" }}>{record.review_status || "Pending"}</td>
-                  <td style={{ padding: "12px" }}>{record.decision || "-"}</td>
-                  <td style={{ padding: "12px" }}>
-                    <button
+                  <td>{record.review_status || "Pending"}</td>
+                  <td>{record.decision || "-"}</td>
+                  <td>
+                    <Button
+                      variant="primary"
+                      size="small"
                       onClick={() => navigate(`/review/live/${record.id}`)}
-                      style={{
-                        padding: "5px 10px",
-                        cursor: "pointer",
-                        backgroundColor: "#007bff",
-                        color: "white",
-                        border: "none",
-                        borderRadius: "4px",
-                      }}
                     >
                       View Result
-                    </button>
+                    </Button>
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan="8" style={{ padding: "12px", textAlign: "center" }}>
+                <td colSpan="8" style={{ textAlign: "center" }}>
                   No records found matching your filters.
                 </td>
               </tr>

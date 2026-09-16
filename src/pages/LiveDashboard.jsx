@@ -2,6 +2,7 @@ import { useState } from "react";
 import Header from "../components/Header";
 import { useScanData } from "../context/ScanDataContext";
 import { getRiskLevel } from "../utils/risk";
+import Button from "../components/Button";
 import {
   ComposedChart,
   Line,
@@ -72,7 +73,7 @@ export default function LiveDashboard() {
           <div className="metric-sub">{domainsMonitored}</div>
         </div>
         <div className="metric-card">
-          <h3>CRITICAL ALERTS</h3>
+          <h3>HIGH-RISK ALERTS</h3>
           <div className="metric-sub">{criticalAlerts}</div>
         </div>
         <div className="metric-card">
@@ -219,6 +220,141 @@ export default function LiveDashboard() {
         </div>
       </section>
 
+      <section className="bottom-row">
+        <div className="info-card">
+          <h3 style={{ marginBottom: "16px" }}>RISK DISTRIBUTION</h3>
+
+          {(() => {
+            const totalRisk =
+              riskDistribution.Low +
+              riskDistribution.Medium +
+              riskDistribution.High;
+            const lowPercent =
+              totalRisk > 0 ? (riskDistribution.Low / totalRisk) * 100 : 0;
+            const mediumPercent =
+              totalRisk > 0 ? (riskDistribution.Medium / totalRisk) * 100 : 0;
+            const highPercent =
+              totalRisk > 0 ? (riskDistribution.High / totalRisk) * 100 : 0;
+
+            return (
+              <>
+                <div
+                  style={{
+                    display: "flex",
+                    width: "100%",
+                    height: "20px",
+                    borderRadius: "10px",
+                    overflow: "hidden",
+                    marginBottom: "16px",
+                    backgroundColor: "#e2e8f0",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: `${lowPercent}%`,
+                      backgroundColor: "#22c55e",
+                      transition: "width 0.3s ease",
+                    }}
+                    title={`Low: ${riskDistribution.Low}`}
+                  />
+                  <div
+                    style={{
+                      width: `${mediumPercent}%`,
+                      backgroundColor: "#f59e0b",
+                      transition: "width 0.3s ease",
+                    }}
+                    title={`Medium: ${riskDistribution.Medium}`}
+                  />
+                  <div
+                    style={{
+                      width: `${highPercent}%`,
+                      backgroundColor: "#ef4444",
+                      transition: "width 0.3s ease",
+                    }}
+                    title={`High: ${riskDistribution.High}`}
+                  />
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: "14px",
+                    color: "#64748b",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: "10px",
+                        height: "10px",
+                        backgroundColor: "#22c55e",
+                        borderRadius: "50%",
+                      }}
+                    />
+                    <span>
+                      Low <strong>{riskDistribution.Low}</strong>
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: "10px",
+                        height: "10px",
+                        backgroundColor: "#f59e0b",
+                        borderRadius: "50%",
+                      }}
+                    />
+                    <span>
+                      Medium <strong>{riskDistribution.Medium}</strong>
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: "10px",
+                        height: "10px",
+                        backgroundColor: "#ef4444",
+                        borderRadius: "50%",
+                      }}
+                    />
+                    <span>
+                      High <strong>{riskDistribution.High}</strong>
+                    </span>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+        </div>
+        <div className="info-card">
+          <h3>SYSTEM STATUS</h3>
+          <ul>
+            <li>Feed collector: active</li>
+            <li>Risk scoring: status</li>
+            <li>Last data collection: Completed</li>
+          </ul>
+        </div>
+      </section>
+
       <section className="alerts-section">
         <div
           style={{
@@ -233,61 +369,39 @@ export default function LiveDashboard() {
             <span style={{ fontSize: "14px", color: "#64748b" }}>
               Page {currentPage} of {totalPages}
             </span>
-            <button
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            <Button
+              variant="default"
+              size="small"
               disabled={currentPage === 1}
-              style={{
-                padding: "6px 12px",
-                border: "1px solid #e2e8f0",
-                backgroundColor: currentPage === 1 ? "#f8fafc" : "#fff",
-                color: currentPage === 1 ? "#94a3b8" : "#0f172a",
-                cursor: currentPage === 1 ? "not-allowed" : "pointer",
-                borderRadius: "4px",
-              }}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
             >
               Previous
-            </button>
-            <button
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            </Button>
+            <Button
+              variant="default"
+              size="small"
               disabled={currentPage === totalPages}
-              style={{
-                padding: "6px 12px",
-                border: "1px solid #e2e8f0",
-                backgroundColor:
-                  currentPage === totalPages ? "#f8fafc" : "#fff",
-                color: currentPage === totalPages ? "#94a3b8" : "#0f172a",
-                cursor: currentPage === totalPages ? "not-allowed" : "pointer",
-                borderRadius: "4px",
-              }}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
             >
               Next
-            </button>
+            </Button>
           </div>
         </div>
         <div className="alerts-table-container" style={{ overflowX: "auto" }}>
-          <table
-            className="alerts-table"
-            style={{
-              width: "100%",
-              textAlign: "left",
-              borderCollapse: "collapse",
-            }}
-          >
+          <table className="app-table">
             <thead>
-              <tr
-                style={{ borderBottom: "1px solid #e2e8f0", color: "#64748b" }}
-              >
-                <th style={{ padding: "12px 8px" }}>Domain</th>
-                <th style={{ padding: "12px 8px" }}>Risk Score</th>
-                <th style={{ padding: "12px 8px" }}>Prediction</th>
-                <th style={{ padding: "12px 8px" }}>Status</th>
+              <tr>
+                <th>Domain</th>
+                <th>Risk Score</th>
+                <th>Prediction</th>
+                <th>Status</th>
               </tr>
             </thead>
             <tbody>
               {currentAlerts.map((alert) => (
                 <tr key={alert.id} style={{ borderBottom: "1px solid #eee" }}>
-                  <td style={{ padding: "12px 8px" }}>{alert.domain}</td>
-                  <td style={{ padding: "12px 8px" }}>{alert.risk_score}</td>
+                  <td>{alert.domain}</td>
+                  <td>{alert.risk_score}</td>
                   <td
                     style={{
                       padding: "12px 8px",
@@ -298,36 +412,11 @@ export default function LiveDashboard() {
                   >
                     {alert.prediction}
                   </td>
-                  <td style={{ padding: "12px 8px" }}>{alert.review_status}</td>
+                  <td>{alert.review_status}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
-      </section>
-
-      <section className="bottom-row">
-        <div className="info-card">
-          <h3>RISK DISTRIBUTION</h3>
-          <ul style={{ listStyleType: "none", padding: 0 }}>
-            <li style={{ padding: "4px 0" }}>
-              Low: <strong>{riskDistribution.Low}</strong>
-            </li>
-            <li style={{ padding: "4px 0" }}>
-              Medium: <strong>{riskDistribution.Medium}</strong>
-            </li>
-            <li style={{ padding: "4px 0" }}>
-              High: <strong>{riskDistribution.High}</strong>
-            </li>
-          </ul>
-        </div>
-        <div className="info-card">
-          <h3>SYSTEM STATUS</h3>
-          <ul>
-            <li>Feed collector: active</li>
-            <li>Risk scoring: status</li>
-            <li>Last data collection: Completed</li>
-          </ul>
         </div>
       </section>
     </>

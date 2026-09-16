@@ -1,17 +1,27 @@
+import { useState } from "react";
 import Header from "../components/Header";
 import { useParams, useNavigate } from "react-router-dom";
 import { useScanData } from "../context/ScanDataContext";
 import { getRiskColor } from "../utils/risk";
+import Button from "../components/Button";
 
 export default function ScanResult() {
   const { source, id } = useParams();
   const navigate = useNavigate();
-  const { personalRecords, liveRecords, updatePersonalRecord, updateLiveRecord } = useScanData();
+  const {
+    personalRecords,
+    liveRecords,
+    updatePersonalRecord,
+    updateLiveRecord,
+  } = useScanData();
+
+  const [reviewStatus, setReviewStatus] = useState("pending");
+  const [analystNote, setAnalystNote] = useState("");
 
   // Find the specific record from either live or personal data
   const searchId = parseInt(id);
   const isPersonalRecord = source === "personal";
-  const record = isPersonalRecord 
+  const record = isPersonalRecord
     ? personalRecords.find((r) => r.id === searchId)
     : liveRecords.find((r) => r.id === searchId);
 
@@ -24,39 +34,37 @@ export default function ScanResult() {
         />
         <div style={{ padding: "20px", textAlign: "center" }}>
           <h2>Scan result not found.</h2>
-          <button
-            onClick={() => navigate("/queue")}
-            style={{
-              padding: "8px 16px",
-              cursor: "pointer",
-              backgroundColor: "#6c757d",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              fontWeight: "bold",
-              marginTop: "15px",
-            }}
+          <Button
+            variant="secondary"
+            onClick={() => navigate(isPersonalRecord ? "/workspace" : "/queue")}
           >
             &larr; Return to Scan History
-          </button>
+          </Button>
         </div>
       </>
     );
   }
 
-  const handleDecision = (isPhishing) => {
+  const handleSaveDecision = () => {
+    if (reviewStatus === "pending") {
+      navigate(isPersonalRecord ? "/workspace" : "/queue");
+      return;
+    }
+
     const updatedRecord = { ...record };
     updatedRecord.review_status = "Completed";
-    updatedRecord.decision = isPhishing ? "Confirmed Phishing" : "False Positive";
+    updatedRecord.decision =
+      reviewStatus === "phishing" ? "Confirmed Phishing" : "False Positive";
     updatedRecord.reviewer = "Current Analyst";
     updatedRecord.review_date = new Date().toISOString().split("T")[0];
+    updatedRecord.note = analystNote;
 
     if (isPersonalRecord) {
       updatePersonalRecord(updatedRecord);
     } else {
       updateLiveRecord(updatedRecord);
     }
-    navigate("/queue");
+    navigate(isPersonalRecord ? "/workspace" : "/queue");
   };
 
   return (
@@ -67,20 +75,12 @@ export default function ScanResult() {
       />
 
       <div style={{ marginBottom: "15px" }}>
-        <button
-          onClick={() => navigate("/queue")}
-          style={{
-            padding: "8px 16px",
-            cursor: "pointer",
-            backgroundColor: "#6c757d",
-            color: "white",
-            border: "none",
-            borderRadius: "4px",
-            fontWeight: "bold",
-          }}
+        <Button
+          variant="secondary"
+          onClick={() => navigate(isPersonalRecord ? "/workspace" : "/queue")}
         >
           &larr; Back to History
-        </button>
+        </Button>
       </div>
 
       {/* 1. Summary Information */}
@@ -122,10 +122,12 @@ export default function ScanResult() {
           {record.review_status === "Completed" && (
             <>
               <li style={{ marginBottom: "10px" }}>
-                <strong>Review Status:</strong> <span>{record.review_status}</span>
+                <strong>Review Status:</strong>{" "}
+                <span>{record.review_status}</span>
               </li>
               <li style={{ marginBottom: "10px" }}>
-                <strong>Analyst Decision:</strong> <span>{record.decision}</span>
+                <strong>Analyst Decision:</strong>{" "}
+                <span>{record.decision}</span>
               </li>
               <li style={{ marginBottom: "10px" }}>
                 <strong>Reviewer:</strong> <span>{record.reviewer}</span>
@@ -149,38 +151,20 @@ export default function ScanResult() {
       >
         <h2>Feature & Risk Information</h2>
         <p>Values extracted by the backend ML model:</p>
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            marginTop: "10px",
-          }}
-        >
+        <table className="app-table" style={{ marginTop: "10px" }}>
           <thead>
             <tr style={{ backgroundColor: "#f0f0f0", textAlign: "left" }}>
-              <th style={{ padding: "10px", border: "1px solid #ccc" }}>
-                Feature
-              </th>
-              <th style={{ padding: "10px", border: "1px solid #ccc" }}>
-                Detected Value
-              </th>
-              <th style={{ padding: "10px", border: "1px solid #ccc" }}>
-                Risk Indicator
-              </th>
+              <th>Feature</th>
+              <th>Detected Value</th>
+              <th>Risk Indicator</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
-                1. Domain Age
-              </td>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
-                {record.domain_age}
-              </td>
+              <td>1. Domain Age</td>
+              <td>{record.domain_age}</td>
               <td
                 style={{
-                  padding: "10px",
-                  border: "1px solid #ccc",
                   color:
                     record.domain_age.includes("day") ||
                     record.domain_age.includes("week")
@@ -196,16 +180,10 @@ export default function ScanResult() {
               </td>
             </tr>
             <tr>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
-                2. Registration Period
-              </td>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
-                {record.registration_period}
-              </td>
+              <td>2. Registration Period</td>
+              <td>{record.registration_period}</td>
               <td
                 style={{
-                  padding: "10px",
-                  border: "1px solid #ccc",
                   color:
                     record.registration_period === "1 year" ? "red" : "green",
                   fontWeight: "bold",
@@ -217,16 +195,10 @@ export default function ScanResult() {
               </td>
             </tr>
             <tr>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
-                3. Domain Length
-              </td>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
-                {record.domain_length} characters
-              </td>
+              <td>3. Domain Length</td>
+              <td>{record.domain_length} characters</td>
               <td
                 style={{
-                  padding: "10px",
-                  border: "1px solid #ccc",
                   color: record.domain_length > 20 ? "orange" : "green",
                   fontWeight: "bold",
                 }}
@@ -235,16 +207,10 @@ export default function ScanResult() {
               </td>
             </tr>
             <tr>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
-                4. Number of Hyphens
-              </td>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
-                {record.hyphens} hyphens
-              </td>
+              <td>4. Number of Hyphens</td>
+              <td>{record.hyphens} hyphens</td>
               <td
                 style={{
-                  padding: "10px",
-                  border: "1px solid #ccc",
                   color: record.hyphens > 1 ? "red" : "green",
                   fontWeight: "bold",
                 }}
@@ -253,16 +219,10 @@ export default function ScanResult() {
               </td>
             </tr>
             <tr>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
-                5. Number of Digits
-              </td>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
-                {record.digits} digits
-              </td>
+              <td>5. Number of Digits</td>
+              <td>{record.digits} digits</td>
               <td
                 style={{
-                  padding: "10px",
-                  border: "1px solid #ccc",
                   color: record.digits > 0 ? "orange" : "green",
                   fontWeight: "bold",
                 }}
@@ -271,16 +231,10 @@ export default function ScanResult() {
               </td>
             </tr>
             <tr>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
-                6. Shannon Entropy
-              </td>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
-                {record.shannon_entropy} entropy
-              </td>
+              <td>6. Shannon Entropy</td>
+              <td>{record.shannon_entropy} entropy</td>
               <td
                 style={{
-                  padding: "10px",
-                  border: "1px solid #ccc",
                   color: record.shannon_entropy === "High" ? "red" : "green",
                   fontWeight: "bold",
                 }}
@@ -289,16 +243,10 @@ export default function ScanResult() {
               </td>
             </tr>
             <tr>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
-                7. Brand Keyword
-              </td>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
-                {record.brand_keyword}
-              </td>
+              <td>7. Brand Keyword</td>
+              <td>{record.brand_keyword}</td>
               <td
                 style={{
-                  padding: "10px",
-                  border: "1px solid #ccc",
                   color: record.brand_keyword !== "None" ? "red" : "green",
                   fontWeight: "bold",
                 }}
@@ -307,16 +255,10 @@ export default function ScanResult() {
               </td>
             </tr>
             <tr>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
-                8. Typosquatting Similarity
-              </td>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
-                {record.typosquatting_similarity}
-              </td>
+              <td>8. Typosquatting Similarity</td>
+              <td>{record.typosquatting_similarity}</td>
               <td
                 style={{
-                  padding: "10px",
-                  border: "1px solid #ccc",
                   color:
                     record.typosquatting_similarity !== "Exact Match" &&
                     record.typosquatting_similarity !== "Low"
@@ -332,16 +274,10 @@ export default function ScanResult() {
               </td>
             </tr>
             <tr>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
-                9. SSL Certificate Age
-              </td>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
-                {record.ssl_cert_age}
-              </td>
+              <td>9. SSL Certificate Age</td>
+              <td>{record.ssl_cert_age}</td>
               <td
                 style={{
-                  padding: "10px",
-                  border: "1px solid #ccc",
                   color:
                     record.ssl_cert_age.includes("day") ||
                     record.ssl_cert_age.includes("month")
@@ -357,16 +293,10 @@ export default function ScanResult() {
               </td>
             </tr>
             <tr>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
-                10. Top-Level Domain (TLD)
-              </td>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
-                {record.tld}
-              </td>
+              <td>10. Top-Level Domain (TLD)</td>
+              <td>{record.tld}</td>
               <td
                 style={{
-                  padding: "10px",
-                  border: "1px solid #ccc",
                   color:
                     record.tld === ".xyz" || record.tld === ".info"
                       ? "orange"
@@ -397,54 +327,184 @@ export default function ScanResult() {
             <h2 style={{ color: "green", marginBottom: "10px", marginTop: 0 }}>
               Decision Recorded
             </h2>
-            <p>
+            <p style={{ marginBottom: "12px" }}>
               This scan was reviewed by <strong>{record.reviewer}</strong> on{" "}
               <strong>{record.review_date}</strong>. The final decision was{" "}
               <strong>{record.decision}</strong>.
             </p>
+            {record.note && (
+              <div
+                style={{
+                  padding: "16px",
+                  backgroundColor: "#f8f9fa",
+                  borderRadius: "6px",
+                  borderLeft: "4px solid #cbd5e1",
+                }}
+              >
+                <h4
+                  style={{
+                    marginTop: 0,
+                    marginBottom: "8px",
+                    fontSize: "14px",
+                    color: "#475569",
+                  }}
+                >
+                  Analyst Note
+                </h4>
+                <p
+                  style={{
+                    margin: 0,
+                    whiteSpace: "pre-wrap",
+                    color: "#334155",
+                    lineHeight: "1.5",
+                  }}
+                >
+                  {record.note}
+                </p>
+              </div>
+            )}
           </div>
         ) : (
           <>
-            <h2 style={{ color: "#d9534f", marginBottom: "10px", marginTop: 0 }}>
-              Human decision required
-            </h2>
-            <p style={{ marginBottom: "5px" }}>
-              This score is not confirmed yet. Please wait for the analyst to review it.
-            </p>
-            <p style={{ marginBottom: "20px" }}>
-              Review the evidence before recording a final decision.
+            <h2 style={{ marginBottom: "10px", marginTop: 0 }}>Human review</h2>
+            <h3 style={{ marginBottom: "5px", fontSize: "16px" }}>
+              Record your decision
+            </h3>
+            <p style={{ marginBottom: "20px", color: "#64748b" }}>
+              Your decision is kept separately from the calculated risk score.
             </p>
 
-            <div style={{ display: "flex", gap: "15px" }}>
-              <button
-                onClick={() => handleDecision(false)}
+            <div style={{ marginBottom: "24px" }}>
+              <h4 style={{ marginBottom: "12px", fontSize: "14px" }}>
+                Review status
+              </h4>
+              <div
                 style={{
-                  padding: "10px 20px",
-                  cursor: "pointer",
-                  backgroundColor: "#f0ad4e",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "4px",
-                  fontWeight: "bold",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "12px",
                 }}
               >
-                Mark false positive
-              </button>
-              <button
-                onClick={() => handleDecision(true)}
-                style={{
-                  padding: "10px 20px",
-                  cursor: "pointer",
-                  backgroundColor: "#d9534f",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "4px",
-                  fontWeight: "bold",
-                }}
-              >
-                Confirm phishing
-              </button>
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: "8px",
+                    cursor: "pointer",
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="reviewStatus"
+                    value="pending"
+                    checked={reviewStatus === "pending"}
+                    onChange={(e) => setReviewStatus(e.target.value)}
+                    style={{ marginTop: "4px" }}
+                  />
+                  <div>
+                    <div style={{ fontWeight: "bold", fontSize: "14px" }}>
+                      Keep pending
+                    </div>
+                    <div style={{ color: "#64748b", fontSize: "13px" }}>
+                      Leave this record open
+                    </div>
+                  </div>
+                </label>
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: "8px",
+                    cursor: "pointer",
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="reviewStatus"
+                    value="phishing"
+                    checked={reviewStatus === "phishing"}
+                    onChange={(e) => setReviewStatus(e.target.value)}
+                    style={{ marginTop: "4px" }}
+                  />
+                  <div>
+                    <div style={{ fontWeight: "bold", fontSize: "14px" }}>
+                      Phishing
+                    </div>
+                    <div style={{ color: "#64748b", fontSize: "13px" }}>
+                      Record an analyst finding
+                    </div>
+                  </div>
+                </label>
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: "8px",
+                    cursor: "pointer",
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="reviewStatus"
+                    value="not_phishing"
+                    checked={reviewStatus === "not_phishing"}
+                    onChange={(e) => setReviewStatus(e.target.value)}
+                    style={{ marginTop: "4px" }}
+                  />
+                  <div>
+                    <div style={{ fontWeight: "bold", fontSize: "14px" }}>
+                      Not phishing
+                    </div>
+                    <div style={{ color: "#64748b", fontSize: "13px" }}>
+                      Dismiss the suspected threat
+                    </div>
+                  </div>
+                </label>
+              </div>
             </div>
+
+            <div style={{ marginBottom: "24px" }}>
+              <h4 style={{ marginBottom: "8px", fontSize: "14px" }}>
+                Analyst note (optional)
+              </h4>
+              <p
+                style={{
+                  fontSize: "13px",
+                  color: "#64748b",
+                  margin: "0 0 8px 0",
+                }}
+              >
+                What led you to this decision?
+              </p>
+              <textarea
+                value={analystNote}
+                onChange={(e) => setAnalystNote(e.target.value.slice(0, 2000))}
+                style={{
+                  width: "100%",
+                  minHeight: "100px",
+                  padding: "12px",
+                  border: "1px solid #ccc",
+                  borderRadius: "4px",
+                  boxSizing: "border-box",
+                  fontFamily: "inherit",
+                  resize: "vertical",
+                }}
+              />
+              <div
+                style={{
+                  textAlign: "right",
+                  fontSize: "12px",
+                  color: "#64748b",
+                  marginTop: "4px",
+                }}
+              >
+                {analystNote.length} / 2,000 characters
+              </div>
+            </div>
+
+            <Button variant="primary" onClick={handleSaveDecision}>
+              Save decision
+            </Button>
           </>
         )}
       </section>
