@@ -49,6 +49,34 @@ export default function LiveReviewQueue() {
     return matchesSearch && matchesRisk && matchesStatus;
   });
 
+  const exportToCSV = () => {
+    const headers = ["Domain ID", "Domain Name", "Risk Score", "Prediction", "Review Status", "Decision"];
+    const csvRows = [headers.join(",")];
+
+    for (const record of filteredData) {
+      const values = [
+        record.id,
+        record.domain,
+        record.risk_score,
+        record.prediction,
+        record.review_status || "Pending",
+        record.decision || "-"
+      ];
+      csvRows.push(values.map(v => `"${v}"`).join(","));
+    }
+
+    const csvString = csvRows.join("\n");
+    const blob = new Blob([csvString], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "live_queue_export.csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const totalPages = Math.max(
     1,
     Math.ceil(filteredData.length / recordsPerPage),
@@ -107,6 +135,9 @@ export default function LiveReviewQueue() {
         </select>
         <Button variant="outline" size="small" onClick={handleClearFilters}>
           CLEAR FILTERS
+        </Button>
+        <Button variant="primary" size="small" onClick={exportToCSV}>
+          EXPORT CSV
         </Button>
       </section>
 
