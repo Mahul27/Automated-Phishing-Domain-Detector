@@ -50,7 +50,14 @@ export default function LiveReviewQueue() {
   });
 
   const exportToCSV = () => {
-    const headers = ["Domain ID", "Domain Name", "Risk Score", "Prediction", "Review Status", "Decision"];
+    const headers = [
+      "Domain ID",
+      "Domain Name",
+      "Risk Score",
+      "Prediction",
+      "Review Status",
+      "Decision",
+    ];
     const csvRows = [headers.join(",")];
 
     for (const record of filteredData) {
@@ -60,9 +67,9 @@ export default function LiveReviewQueue() {
         record.risk_score,
         record.prediction,
         record.review_status || "Pending",
-        record.decision || "-"
+        record.decision || "-",
       ];
-      csvRows.push(values.map(v => `"${v}"`).join(","));
+      csvRows.push(values.map((v) => `"${v}"`).join(","));
     }
 
     const csvString = csvRows.join("\n");
