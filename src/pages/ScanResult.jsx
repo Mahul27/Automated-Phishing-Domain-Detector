@@ -1,70 +1,83 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "../components/Header";
 import { useParams, useNavigate } from "react-router-dom";
-import { useScanData } from "../context/ScanDataContext";
+import { fetchScan, updateScanReview } from "../Services/api";
 import { getRiskColor } from "../utils/risk";
 import Button from "../components/Button";
+import ApiState from "../components/ApiState";
 
 export default function ScanResult() {
   const { source, id } = useParams();
   const navigate = useNavigate();
-  const {
-    personalRecords,
-    liveRecords,
-    updatePersonalRecord,
-    updateLiveRecord,
-  } = useScanData();
+
+  const [record, setRecord] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const [reviewStatus, setReviewStatus] = useState("pending");
   const [analystNote, setAnalystNote] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  // Find the specific record from either live or personal data
   const searchId = parseInt(id);
   const isPersonalRecord = source === "personal";
-  const record = isPersonalRecord
-    ? personalRecords.find((r) => r.id === searchId)
-    : liveRecords.find((r) => r.id === searchId);
 
-  if (!record) {
+  const loadRecord = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await fetchScan(searchId);
+      setRecord(data);
+    } catch (err) {
+      setError(err.message || "Failed to load scan details.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRecord();
+  }, [searchId]);
+
+  if (loading || error || !record) {
     return (
       <>
         <Header
           title="Review Details"
           subtitle="Detailed analysis of the requested domain."
         />
-        <div style={{ padding: "20px", textAlign: "center" }}>
-          <h2>Scan result not found.</h2>
-          <Button
-            variant="secondary"
-            onClick={() => navigate(isPersonalRecord ? "/workspace" : "/queue")}
-          >
-            &larr; Return to Scan History
-          </Button>
-        </div>
+        <ApiState loading={loading} error={error} onRetry={loadRecord} />
+        {!loading && !error && !record && (
+          <div style={{ padding: "20px", textAlign: "center" }}>
+            <h2>Scan result not found.</h2>
+            <Button
+              variant="secondary"
+              onClick={() => navigate(isPersonalRecord ? "/workspace" : "/queue")}
+            >
+              &larr; Return to Scan History
+            </Button>
+          </div>
+        )}
       </>
     );
   }
 
-  const handleSaveDecision = () => {
+  const handleSaveDecision = async () => {
     if (reviewStatus === "pending") {
       navigate(isPersonalRecord ? "/workspace" : "/queue");
       return;
     }
 
-    const updatedRecord = { ...record };
-    updatedRecord.review_status = "Completed";
-    updatedRecord.decision =
-      reviewStatus === "phishing" ? "Confirmed Phishing" : "False Positive";
-    updatedRecord.reviewer = "Current Analyst";
-    updatedRecord.review_date = new Date().toISOString().split("T")[0];
-    updatedRecord.note = analystNote;
+    setSubmitting(true);
+    const decisionText = reviewStatus === "phishing" ? "Confirmed Phishing" : "False Positive";
 
-    if (isPersonalRecord) {
-      updatePersonalRecord(updatedRecord);
-    } else {
-      updateLiveRecord(updatedRecord);
+    try {
+      await updateScanReview(searchId, { decision: decisionText, note: analystNote });
+      navigate(isPersonalRecord ? "/workspace" : "/queue");
+    } catch (err) {
+      console.error("Failed to submit decision", err);
+      alert("Failed to submit decision. Please try again.");
+      setSubmitting(false);
     }
-    navigate(isPersonalRecord ? "/workspace" : "/queue");
   };
 
   return (
@@ -133,7 +146,7 @@ export default function ScanResult() {
                 <strong>Reviewer:</strong> <span>{record.reviewer}</span>
               </li>
               <li style={{ marginBottom: "10px" }}>
-                <strong>Review Date:</strong> <span>{record.review_date}</span>
+                <strong>Review Date:</strong> <span>{record.review_date || new Date(record.scan_time).toLocaleString()}</span>
               </li>
             </>
           )}
@@ -166,15 +179,15 @@ export default function ScanResult() {
               <td
                 style={{
                   color:
-                    record.domain_age.includes("day") ||
-                    record.domain_age.includes("week")
+                    record.domain_age && (record.domain_age.includes("day") ||
+                    record.domain_age.includes("week"))
                       ? "red"
                       : "green",
                   fontWeight: "bold",
                 }}
               >
-                {record.domain_age.includes("day") ||
-                record.domain_age.includes("week")
+                {record.domain_age && (record.domain_age.includes("day") ||
+                record.domain_age.includes("week"))
                   ? "High Risk"
                   : "Low Risk"}
               </td>
@@ -279,15 +292,15 @@ export default function ScanResult() {
               <td
                 style={{
                   color:
-                    record.ssl_cert_age.includes("day") ||
-                    record.ssl_cert_age.includes("month")
+                    record.ssl_cert_age && (record.ssl_cert_age.includes("day") ||
+                    record.ssl_cert_age.includes("month"))
                       ? "red"
                       : "green",
                   fontWeight: "bold",
                 }}
               >
-                {record.ssl_cert_age.includes("day") ||
-                record.ssl_cert_age.includes("month")
+                {record.ssl_cert_age && (record.ssl_cert_age.includes("day") ||
+                record.ssl_cert_age.includes("month"))
                   ? "High Risk"
                   : "Low Risk"}
               </td>
@@ -329,7 +342,7 @@ export default function ScanResult() {
             </h2>
             <p style={{ marginBottom: "12px" }}>
               This scan was reviewed by <strong>{record.reviewer}</strong> on{" "}
-              <strong>{record.review_date}</strong>. The final decision was{" "}
+              <strong>{record.review_date || new Date(record.scan_time).toLocaleString()}</strong>. The final decision was{" "}
               <strong>{record.decision}</strong>.
             </p>
             {record.note && (
@@ -502,8 +515,8 @@ export default function ScanResult() {
               </div>
             </div>
 
-            <Button variant="primary" onClick={handleSaveDecision}>
-              Save decision
+            <Button variant="primary" onClick={handleSaveDecision} disabled={submitting}>
+              {submitting ? "Saving..." : "Save decision"}
             </Button>
           </>
         )}
