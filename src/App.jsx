@@ -7,7 +7,7 @@ import AnalystWorkspace from "./pages/AnalystWorkspace";
 import LiveReviewQueue from "./pages/LiveReviewQueue";
 import ScanResult from "./pages/ScanResult";
 import Layout from "./components/Layout";
-import { ScanDataProvider } from "./context/ScanDataContext";
+
 import "./index.css";
 
 function App() {
@@ -21,9 +21,7 @@ function App() {
         {/* Authenticated Routes with Sidebar/Layout */}
         <Route
           element={
-            <ScanDataProvider>
-              <Layout />
-            </ScanDataProvider>
+            <Layout />
           }
         >
           <Route path="/dashboard" element={<LiveDashboard />} />

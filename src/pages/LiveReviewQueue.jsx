@@ -1,18 +1,39 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "../components/Header";
-import { useScanData } from "../context/ScanDataContext";
+import { fetchScans } from "../Services/api";
 import { useNavigate } from "react-router-dom";
 import Button from "../components/Button";
+import ApiState from "../components/ApiState";
 import { getRiskLevel, getRiskColor } from "../utils/risk";
 
 export default function LiveReviewQueue() {
-  const { liveRecords: demoData } = useScanData();
+  const [liveRecords, setLiveRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [riskFilter, setRiskFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 15;
+
+  const loadRecords = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetchScans("live");
+      setLiveRecords(res.records || []);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRecords();
+  }, []);
 
   const handleClearFilters = () => {
     setSearchTerm("");
@@ -21,7 +42,7 @@ export default function LiveReviewQueue() {
     setCurrentPage(1);
   };
 
-  const filteredData = demoData.filter((record) => {
+  const filteredData = liveRecords.filter((record) => {
     const matchesSearch = record.domain
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
@@ -50,7 +71,14 @@ export default function LiveReviewQueue() {
   });
 
   const exportToCSV = () => {
-    const headers = ["Domain ID", "Domain Name", "Risk Score", "Prediction", "Review Status", "Decision"];
+    const headers = [
+      "Domain ID",
+      "Domain Name",
+      "Risk Score",
+      "Prediction",
+      "Review Status",
+      "Decision",
+    ];
     const csvRows = [headers.join(",")];
 
     for (const record of filteredData) {
@@ -60,9 +88,9 @@ export default function LiveReviewQueue() {
         record.risk_score,
         record.prediction,
         record.review_status || "Pending",
-        record.decision || "-"
+        record.decision || "-",
       ];
-      csvRows.push(values.map(v => `"${v}"`).join(","));
+      csvRows.push(values.map((v) => `"${v}"`).join(","));
     }
 
     const csvString = csvRows.join("\n");
@@ -141,105 +169,116 @@ export default function LiveReviewQueue() {
         </Button>
       </section>
 
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "10px",
-        }}
-      >
-        <div style={{ fontSize: "13px" }}>
-          Showing {filteredData.length} detection records
-        </div>
-        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-          <span style={{ fontSize: "14px", color: "#64748b" }}>
-            Page {currentPage} of {totalPages}
-          </span>
-          <Button
-            variant="default"
-            size="small"
-            disabled={currentPage === 1}
-            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-          >
-            Previous
-          </Button>
-          <Button
-            variant="default"
-            size="small"
-            disabled={currentPage === totalPages}
-            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-          >
-            Next
-          </Button>
-        </div>
-      </div>
+      <ApiState loading={loading} error={error} onRetry={loadRecords} />
 
-      <section
-        className="history-box"
-        style={{ overflowX: "auto", padding: "0", border: "none" }}
-      >
-        <table className="app-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Domain Name</th>
-              <th>TLD</th>
-              <th>Risk Score</th>
-              <th>Prediction</th>
-              <th>Review Status</th>
-              <th>Decision</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {currentRecords.length > 0 ? (
-              currentRecords.map((record) => (
-                <tr key={record.id} style={{ borderBottom: "1px solid #eee" }}>
-                  <td>{record.id}</td>
-                  <td>{record.domain}</td>
-                  <td>{record.tld}</td>
-                  <td
-                    style={{
-                      padding: "12px",
-                      color: getRiskColor(record.risk_score),
-                      fontWeight: "bold",
-                    }}
-                  >
-                    {record.risk_score}
-                  </td>
-                  <td
-                    style={{
-                      padding: "12px",
-                      color: getRiskColor(record.risk_score),
-                      fontWeight: "bold",
-                    }}
-                  >
-                    {record.prediction}
-                  </td>
-                  <td>{record.review_status || "Pending"}</td>
-                  <td>{record.decision || "-"}</td>
-                  <td>
-                    <Button
-                      variant="primary"
-                      size="small"
-                      onClick={() => navigate(`/review/live/${record.id}`)}
-                    >
-                      View Result
-                    </Button>
-                  </td>
+      {!loading && !error && (
+        <>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "10px",
+            }}
+          >
+            <div style={{ fontSize: "13px" }}>
+              Showing {filteredData.length} detection records
+            </div>
+            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+              <span style={{ fontSize: "14px", color: "#64748b" }}>
+                Page {currentPage} of {totalPages}
+              </span>
+              <Button
+                variant="default"
+                size="small"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="default"
+                size="small"
+                disabled={currentPage === totalPages}
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+
+          <section
+            className="history-box"
+            style={{ overflowX: "auto", padding: "0", border: "none" }}
+          >
+            <table className="app-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Domain Name</th>
+                  <th>TLD</th>
+                  <th>Risk Score</th>
+                  <th>Prediction</th>
+                  <th>Review Status</th>
+                  <th>Decision</th>
+                  <th>Action</th>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="8" style={{ textAlign: "center" }}>
-                  No records found matching your filters.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </section>
+              </thead>
+              <tbody>
+                {currentRecords.length > 0 ? (
+                  currentRecords.map((record) => (
+                    <tr
+                      key={record.id}
+                      style={{ borderBottom: "1px solid #eee" }}
+                    >
+                      <td>{record.id}</td>
+                      <td>{record.domain}</td>
+                      <td>{record.tld || record.domain.split(".").pop()}</td>
+                      <td
+                        style={{
+                          padding: "12px",
+                          color: getRiskColor(record.risk_score),
+                          fontWeight: "bold",
+                        }}
+                      >
+                        {record.risk_score}
+                      </td>
+                      <td
+                        style={{
+                          padding: "12px",
+                          color: getRiskColor(record.risk_score),
+                          fontWeight: "bold",
+                        }}
+                      >
+                        {record.prediction}
+                      </td>
+                      <td>{record.review_status || "Pending"}</td>
+                      <td>{record.decision || "-"}</td>
+                      <td>
+                        <Button
+                          variant="primary"
+                          size="small"
+                          onClick={() => navigate(`/review/live/${record.id}`)}
+                        >
+                          View Result
+                        </Button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="8" style={{ textAlign: "center" }}>
+                      No records found matching your filters.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </section>
+        </>
+      )}
     </>
   );
 }

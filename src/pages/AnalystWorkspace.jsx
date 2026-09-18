@@ -1,38 +1,81 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../components/Header";
-import { useScanData } from "../context/ScanDataContext";
+import { fetchScans, createScan, uploadScanFile } from "../Services/api";
 import Button from "../components/Button";
+import ApiState from "../components/ApiState";
 
 export default function AnalystWorkspace() {
-  const { personalRecords, addPersonalRecords } = useScanData();
-  const [activeTab, setActiveTab] = useState("my_records");
+  const [personalRecords, setPersonalRecords] = useState([]);
+  const [recordsLoading, setRecordsLoading] = useState(true);
+  const [recordsError, setRecordsError] = useState(null);
 
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(location.state?.activeTab || "my_records");
   // Data Upload State
   const [fileData, setFileData] = useState(null);
   const [fileName, setFileName] = useState("");
   const [fileSize, setFileSize] = useState("");
   const [uploadError, setUploadError] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
 
+  const [searchTerm, setSearchTerm] = useState("");
+  const [riskFilter, setRiskFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [sourceFilter, setSourceFilter] = useState("All");
+
   // Manual Scan State
-  const location = useLocation();
   const [domain, setDomain] = useState(location.state?.domain || "");
   const [scanError, setScanError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // --- Data Upload Logic ---
+  const loadPersonalRecords = async () => {
+    setRecordsLoading(true);
+    setRecordsError(null);
+    try {
+      const res = await fetchScans("personal");
+      setPersonalRecords(res.records || []);
+    } catch (err) {
+      setRecordsError(err.message);
+    } finally {
+      setRecordsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadPersonalRecords();
+  }, []);
+
   const handleBrowseClick = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
   };
 
-  const handleFileInputChange = (e) => {
+  const handleFileInputChange = async (e) => {
     if (e.target.files && e.target.files[0]) {
-      processFile(e.target.files[0]);
+      const file = e.target.files[0];
+      setUploadError("");
+      setUploading(true);
+      try {
+        const res = await uploadScanFile(file);
+        setFileName(file.name);
+        setFileSize(formatBytes(file.size));
+        setFileData({
+          name: res.filename || file.name,
+          totalCount: res.accepted_count + res.rejected_count,
+          appliedCount: res.accepted_count,
+          errors: res.errors || [],
+        });
+        await loadPersonalRecords();
+        setActiveTab("my_records");
+      } catch (err) {
+        setUploadError(err.message || "Failed to upload file");
+      } finally {
+        setUploading(false);
+      }
     }
   };
 
@@ -41,136 +84,6 @@ export default function AnalystWorkspace() {
     else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
     else return (bytes / 1048576).toFixed(1) + " MB";
   };
-
-  const processFile = (file) => {
-    setUploadError("");
-    const isCSV = file.name.endsWith(".csv") || file.type === "text/csv";
-    const isJSON =
-      file.name.endsWith(".json") || file.type === "application/json";
-
-    if (!isCSV && !isJSON) {
-      setUploadError(
-        "Unsupported file format. Please upload a .csv or .json file.",
-      );
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const text = event.target.result;
-        let parsed = [];
-        if (isCSV) parsed = parseCSV(text);
-        else parsed = parseJSON(text);
-
-        if (parsed.length === 0) {
-          setUploadError("No valid URL records found in this file.");
-          return;
-        }
-
-        const maxRecords = parsed.slice(0, 1000);
-        setFileName(file.name);
-        setFileSize(formatBytes(file.size));
-        addPersonalRecords(maxRecords);
-        setFileData({
-          name: file.name,
-          totalCount: parsed.length,
-          appliedCount: maxRecords.length,
-          type: isCSV ? "CSV" : "JSON",
-        });
-        setActiveTab("my_records"); // Switch to records view
-      } catch (err) {
-        setUploadError(`Failed to parse file: ${err.message}`);
-      }
-    };
-    reader.readAsText(file);
-  };
-
-  const parseCSV = (content) => {
-    const lines = content
-      .split(/\r?\n/)
-      .map((l) => l.trim())
-      .filter(Boolean);
-    if (lines.length === 0) return [];
-    const headerRow = lines[0].split(",").map((col) =>
-      col
-        .trim()
-        .replace(/^["']|["']$/g, "")
-        .toLowerCase(),
-    );
-    const headerIndex = headerRow.findIndex(
-      (col) => col === "url" || col === "domain" || col.includes("url"),
-    );
-    const dataRows = headerIndex !== -1 ? lines.slice(1) : lines;
-    const colToUse = headerIndex !== -1 ? headerIndex : 0;
-    const urls = [];
-    dataRows.forEach((row, idx) => {
-      const cols = row
-        .split(",")
-        .map((c) => c.trim().replace(/^["']|["']$/g, ""));
-      const rawUrl = cols[colToUse];
-      if (rawUrl) {
-        const clean = cleanUrl(rawUrl);
-        if (clean)
-          urls.push({
-            original: rawUrl,
-            domain: clean,
-            length: clean.length,
-            valid: isValidDomain(clean),
-          });
-      }
-    });
-    return urls;
-  };
-
-  const parseJSON = (content) => {
-    const data = JSON.parse(content);
-    let list = Array.isArray(data) ? data : [];
-    if (!Array.isArray(data) && data && typeof data === "object") {
-      const possibleArray = Object.values(data).find((val) =>
-        Array.isArray(val),
-      );
-      if (possibleArray) list = possibleArray;
-      else throw new Error("JSON must contain an array of strings or objects.");
-    }
-    const urls = [];
-    list.forEach((item, idx) => {
-      let rawUrl =
-        typeof item === "string"
-          ? item
-          : item && typeof item === "object"
-            ? item.url ||
-              item.domain ||
-              item.URL ||
-              item.Domain ||
-              Object.values(item)[0] ||
-              ""
-            : "";
-      if (rawUrl && typeof rawUrl === "string") {
-        const clean = cleanUrl(rawUrl);
-        if (clean)
-          urls.push({
-            original: rawUrl,
-            domain: clean,
-            length: clean.length,
-            valid: isValidDomain(clean),
-          });
-      }
-    });
-    return urls;
-  };
-
-  const cleanUrl = (str) => {
-    let s = str.trim();
-    s = s.replace(/^https?:\/\//i, "");
-    s = s.split("/")[0].split("?")[0];
-    return s;
-  };
-
-  const isValidDomain = (domain) =>
-    /^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(domain);
-
-  const handleScanRecord = (domain) => navigate("/scan", { state: { domain } });
 
   const handleReset = () => {
     setFileData(null);
@@ -181,8 +94,7 @@ export default function AnalystWorkspace() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // --- Manual Scan Logic ---
-  const handleScanSubmit = (e) => {
+  const handleScanSubmit = async (e) => {
     e.preventDefault();
     setScanError("");
     let input = domain;
@@ -201,22 +113,49 @@ export default function AnalystWorkspace() {
       return setScanError("Please enter a complete domain such as google.com.");
     setDomain(input);
     setLoading(true);
-    setTimeout(() => {
-      const matchedRecord = personalRecords.find(
-        (record) => record.domain.toLowerCase() === input.toLowerCase(),
-      );
+
+    try {
+      const res = await createScan(input);
+      await loadPersonalRecords();
+      navigate(`/review/personal/${res.id}`);
+    } catch (err) {
+      setScanError(err.message || "Failed to scan domain.");
+    } finally {
       setLoading(false);
-      if (matchedRecord) navigate(`/review/personal/${matchedRecord.id}`);
-      else setScanError("This domain is not available in the data.");
-    }, 1500);
+    }
   };
 
-  const filteredRecords = personalRecords.filter(
-    (r) =>
+  const filteredRecords = personalRecords.filter((r) => {
+    const matchesSearch =
       r.domain.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (r.original &&
-        r.original.toLowerCase().includes(searchTerm.toLowerCase())),
-  );
+        r.original.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    let matchesRisk = true;
+    if (riskFilter === "High") {
+      matchesRisk = r.prediction?.toLowerCase() === "high" || r.risk_score >= 75;
+    } else if (riskFilter === "Medium") {
+      matchesRisk = r.prediction?.toLowerCase() === "medium" || (r.risk_score >= 40 && r.risk_score < 75);
+    } else if (riskFilter === "Low") {
+      matchesRisk = r.prediction?.toLowerCase() === "low" || (r.risk_score !== undefined && r.risk_score < 40);
+    }
+
+    let matchesStatus = true;
+    if (statusFilter === "Completed") {
+      matchesStatus = r.review_status === "Completed";
+    } else if (statusFilter === "Pending") {
+      matchesStatus = r.review_status === "Pending" || !r.review_status;
+    }
+
+    let matchesSource = true;
+    if (sourceFilter === "Manual") {
+      matchesSource = r.source === "manual";
+    } else if (sourceFilter === "Import") {
+      matchesSource = r.source !== "manual";
+    }
+
+    return matchesSearch && matchesRisk && matchesStatus && matchesSource;
+  });
 
   return (
     <>
@@ -228,23 +167,25 @@ export default function AnalystWorkspace() {
       <div className="metrics-row">
         <div className="metric-card">
           <h3>My records</h3>
-          <div className="metric-sub">
-            {personalRecords.length + (domain ? 1 : 0)}
-          </div>
+          <div className="metric-sub">{personalRecords.length}</div>
           <p style={{ fontSize: "12px", color: "#64748b" }}>
             Manual + imported
           </p>
         </div>
         <div className="metric-card">
           <h3>Manual searches</h3>
-          <div className="metric-sub">{domain ? 1 : 0}</div>
+          <div className="metric-sub">
+            {personalRecords.filter((r) => r.source === "manual").length}
+          </div>
           <p style={{ fontSize: "12px", color: "#64748b" }}>
             Submitted one at a time
           </p>
         </div>
         <div className="metric-card">
           <h3>Imported records</h3>
-          <div className="metric-sub">{personalRecords.length}</div>
+          <div className="metric-sub">
+            {personalRecords.filter((r) => r.source !== "manual").length}
+          </div>
           <p style={{ fontSize: "12px", color: "#64748b" }}>
             {fileName || "No file imported"}
           </p>
@@ -252,7 +193,10 @@ export default function AnalystWorkspace() {
         <div className="metric-card">
           <h3>Awaiting review</h3>
           <div className="metric-sub">
-            {personalRecords.length + (domain ? 1 : 0)}
+            {
+              personalRecords.filter((r) => r.review_status === "Pending")
+                .length
+            }
           </div>
           <p style={{ fontSize: "12px", color: "#64748b" }}>
             Analyst decisions needed
@@ -292,131 +236,172 @@ export default function AnalystWorkspace() {
             in this table.
           </p>
 
-          <div className="filter-row" style={{ marginTop: "20px" }}>
-            <div style={{ display: "flex", flexDirection: "column" }}>
-              <label style={{ fontSize: "12px", fontWeight: "bold" }}>
-                Search records
-              </label>
-              <input
-                type="text"
-                placeholder="Domain, URL or record ID"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                style={{ width: "250px", padding: "5px" }}
-              />
-            </div>
-            <div style={{ display: "flex", flexDirection: "column" }}>
-              <label style={{ fontSize: "12px", fontWeight: "bold" }}>
-                Risk level
-              </label>
-              <select style={{ width: "150px", padding: "5px" }}>
-                <option>All risk levels</option>
-              </select>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column" }}>
-              <label style={{ fontSize: "12px", fontWeight: "bold" }}>
-                Review status
-              </label>
-              <select style={{ width: "150px", padding: "5px" }}>
-                <option>All review statuses</option>
-              </select>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column" }}>
-              <label style={{ fontSize: "12px", fontWeight: "bold" }}>
-                Record source
-              </label>
-              <select style={{ width: "150px", padding: "5px" }}>
-                <option>All sources</option>
-              </select>
-            </div>
-          </div>
+          <ApiState
+            loading={recordsLoading}
+            error={recordsError}
+            onRetry={loadPersonalRecords}
+          />
 
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: "10px",
-            }}
-          >
-            <span style={{ fontSize: "14px" }}>
-              <strong>{filteredRecords.length}</strong> of{" "}
-              {personalRecords.length} records
-            </span>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <span style={{ fontSize: "12px" }}>Sort by</span>
-              <select style={{ padding: "5px" }}>
-                <option>Highest score first</option>
-              </select>
-            </div>
-          </div>
+          {!recordsLoading && !recordsError && (
+            <>
+              <div className="filter-row" style={{ marginTop: "20px" }}>
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  <label style={{ fontSize: "12px", fontWeight: "bold" }}>
+                    Search records
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Domain, URL or record ID"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    style={{ width: "250px", padding: "5px" }}
+                  />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  <label style={{ fontSize: "12px", fontWeight: "bold" }}>
+                    Risk level
+                  </label>
+                  <select 
+                    style={{ width: "150px", padding: "5px" }}
+                    value={riskFilter}
+                    onChange={(e) => setRiskFilter(e.target.value)}
+                  >
+                    <option value="All">All risk levels</option>
+                    <option value="High">High</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Low">Low</option>
+                  </select>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  <label style={{ fontSize: "12px", fontWeight: "bold" }}>
+                    Review status
+                  </label>
+                  <select 
+                    style={{ width: "150px", padding: "5px" }}
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                  >
+                    <option value="All">All review statuses</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Completed">Completed</option>
+                  </select>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  <label style={{ fontSize: "12px", fontWeight: "bold" }}>
+                    Record source
+                  </label>
+                  <select 
+                    style={{ width: "150px", padding: "5px" }}
+                    value={sourceFilter}
+                    onChange={(e) => setSourceFilter(e.target.value)}
+                  >
+                    <option value="All">All sources</option>
+                    <option value="Manual">Manual search</option>
+                    <option value="Import">File import</option>
+                  </select>
+                </div>
+              </div>
 
-          <table className="app-table">
-            <thead>
-              <tr>
-                <th>Domain / record</th>
-                <th>Prediction</th>
-                <th>Risk score</th>
-                <th>Review status</th>
-                <th>Recorded</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRecords.map((item) => (
-                <tr key={item.id}>
-                  <td>
-                    <div style={{ fontWeight: "bold" }}>{item.domain}</div>
-                    <div style={{ fontSize: "12px", color: "gray" }}>
-                      {item.original ? `IMPORT - ${item.original}` : "MANUAL"}
-                    </div>
-                  </td>
-                  <td
-                    style={{ color: item.risk_score > 75 ? "red" : "orange" }}
-                  >
-                    {item.risk_score ? item.prediction : "Critical"}
-                  </td>
-                  <td
-                    style={{ color: item.risk_score > 75 ? "red" : "orange" }}
-                  >
-                    {item.risk_score ? item.risk_score : "86"}
-                  </td>
-                  <td
-                    style={{
-                      color:
-                        item.review_status === "Completed"
-                          ? "green"
-                          : "#d97706",
-                    }}
-                  >
-                    {item.review_status || "Pending review"}
-                  </td>
-                  <td style={{ color: "gray", fontSize: "12px" }}>
-                    {item.review_date || "08 Sept, 05:06 pm"}
-                  </td>
-                  <td>
-                    <Button
-                      variant="text"
-                      size="small"
-                      onClick={() => navigate(`/review/personal/${item.id}`)}
-                    >
-                      Open &gt;
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-              {filteredRecords.length === 0 && (
-                <tr>
-                  <td
-                    colSpan="6"
-                    style={{ padding: "20px", textAlign: "center" }}
-                  >
-                    No records to display.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: "10px",
+                }}
+              >
+                <span style={{ fontSize: "14px" }}>
+                  <strong>{filteredRecords.length}</strong> of{" "}
+                  {personalRecords.length} records
+                </span>
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "10px" }}
+                >
+                  <span style={{ fontSize: "12px" }}>Sort by</span>
+                  <select style={{ padding: "5px" }}>
+                    <option>Highest score first</option>
+                  </select>
+                </div>
+              </div>
+
+              <table className="app-table">
+                <thead>
+                  <tr>
+                    <th>Domain / record</th>
+                    <th>Prediction</th>
+                    <th>Risk score</th>
+                    <th>Review status</th>
+                    <th>Recorded</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRecords.map((item) => (
+                    <tr key={item.id}>
+                      <td>
+                        <div style={{ fontWeight: "bold" }}>{item.domain}</div>
+                        <div style={{ fontSize: "12px", color: "gray" }}>
+                          {item.source === "manual"
+                            ? "MANUAL"
+                            : `IMPORT - ${item.original}`}
+                        </div>
+                      </td>
+                      <td
+                        style={{
+                          color: item.risk_score > 75 ? "red" : "orange",
+                        }}
+                      >
+                        {item.prediction}
+                      </td>
+                      <td
+                        style={{
+                          color: item.risk_score > 75 ? "red" : "orange",
+                        }}
+                      >
+                        {item.risk_score}
+                      </td>
+                      <td
+                        style={{
+                          color:
+                            item.review_status === "Completed"
+                              ? "green"
+                              : "#d97706",
+                        }}
+                      >
+                        {item.review_status || "Pending review"}
+                      </td>
+                      <td style={{ color: "gray", fontSize: "12px" }}>
+                        {item.scan_time
+                          ? new Date(item.scan_time).toLocaleString()
+                          : "Unknown"}
+                      </td>
+                      <td>
+                        <Button
+                          variant="text"
+                          size="small"
+                          onClick={() =>
+                            navigate(`/review/personal/${item.id}`)
+                          }
+                        >
+                          Open &gt;
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredRecords.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan="6"
+                        style={{ padding: "20px", textAlign: "center" }}
+                      >
+                        No records to display.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </>
+          )}
         </div>
       )}
 
@@ -477,8 +462,8 @@ export default function AnalystWorkspace() {
             <>
               <h2>Choose a CSV or JSON file</h2>
               <p>
-                Files are parsed locally in your browser. This demo accepts up
-                to 1,000 URL records at a time.
+                Files are uploaded to the backend. This demo accepts up to 1,000
+                URL records at a time.
               </p>
               <p>
                 <strong>CSV:</strong> 1st row header "url", then one URL per
@@ -498,17 +483,30 @@ export default function AnalystWorkspace() {
                 variant="outline"
                 onClick={handleBrowseClick}
                 style={{ marginTop: "10px" }}
+                disabled={uploading}
               >
-                BROWSE FILES
+                {uploading ? "UPLOADING..." : "BROWSE FILES"}
               </Button>
             </>
           ) : (
             <div className="state-box">
               <strong>{fileName}</strong>
               <p>
-                Type: {fileData.type} | Size: {fileSize} | Records parsed:{" "}
-                {personalRecords.length}
+                Size: {fileSize} | Accepted: {fileData.appliedCount} /{" "}
+                {fileData.totalCount}
               </p>
+              {fileData.errors && fileData.errors.length > 0 && (
+                <div style={{ color: "red", marginTop: "10px" }}>
+                  <strong>Errors:</strong>
+                  <ul>
+                    {fileData.errors.map((err, idx) => (
+                      <li key={idx}>
+                        Row {err.row}: {err.message}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <Button
                 variant="outline"
                 onClick={handleReset}
