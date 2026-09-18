@@ -21,6 +21,9 @@ export default function AnalystWorkspace() {
   const fileInputRef = useRef(null);
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [riskFilter, setRiskFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [sourceFilter, setSourceFilter] = useState("All");
 
   // Manual Scan State
   const location = useLocation();
@@ -123,12 +126,37 @@ export default function AnalystWorkspace() {
     }
   };
 
-  const filteredRecords = personalRecords.filter(
-    (r) =>
+  const filteredRecords = personalRecords.filter((r) => {
+    const matchesSearch =
       r.domain.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (r.original &&
-        r.original.toLowerCase().includes(searchTerm.toLowerCase())),
-  );
+        r.original.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    let matchesRisk = true;
+    if (riskFilter === "High") {
+      matchesRisk = r.prediction?.toLowerCase() === "high" || r.risk_score >= 75;
+    } else if (riskFilter === "Medium") {
+      matchesRisk = r.prediction?.toLowerCase() === "medium" || (r.risk_score >= 40 && r.risk_score < 75);
+    } else if (riskFilter === "Low") {
+      matchesRisk = r.prediction?.toLowerCase() === "low" || (r.risk_score !== undefined && r.risk_score < 40);
+    }
+
+    let matchesStatus = true;
+    if (statusFilter === "Completed") {
+      matchesStatus = r.review_status === "Completed";
+    } else if (statusFilter === "Pending") {
+      matchesStatus = r.review_status === "Pending" || !r.review_status;
+    }
+
+    let matchesSource = true;
+    if (sourceFilter === "Manual") {
+      matchesSource = r.source === "manual";
+    } else if (sourceFilter === "Import") {
+      matchesSource = r.source !== "manual";
+    }
+
+    return matchesSearch && matchesRisk && matchesStatus && matchesSource;
+  });
 
   return (
     <>
@@ -234,24 +262,43 @@ export default function AnalystWorkspace() {
                   <label style={{ fontSize: "12px", fontWeight: "bold" }}>
                     Risk level
                   </label>
-                  <select style={{ width: "150px", padding: "5px" }}>
-                    <option>All risk levels</option>
+                  <select 
+                    style={{ width: "150px", padding: "5px" }}
+                    value={riskFilter}
+                    onChange={(e) => setRiskFilter(e.target.value)}
+                  >
+                    <option value="All">All risk levels</option>
+                    <option value="High">High</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Low">Low</option>
                   </select>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column" }}>
                   <label style={{ fontSize: "12px", fontWeight: "bold" }}>
                     Review status
                   </label>
-                  <select style={{ width: "150px", padding: "5px" }}>
-                    <option>All review statuses</option>
+                  <select 
+                    style={{ width: "150px", padding: "5px" }}
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                  >
+                    <option value="All">All review statuses</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Completed">Completed</option>
                   </select>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column" }}>
                   <label style={{ fontSize: "12px", fontWeight: "bold" }}>
                     Record source
                   </label>
-                  <select style={{ width: "150px", padding: "5px" }}>
-                    <option>All sources</option>
+                  <select 
+                    style={{ width: "150px", padding: "5px" }}
+                    value={sourceFilter}
+                    onChange={(e) => setSourceFilter(e.target.value)}
+                  >
+                    <option value="All">All sources</option>
+                    <option value="Manual">Manual search</option>
+                    <option value="Import">File import</option>
                   </select>
                 </div>
               </div>
