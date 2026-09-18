@@ -10,8 +10,8 @@ export default function AnalystWorkspace() {
   const [recordsLoading, setRecordsLoading] = useState(true);
   const [recordsError, setRecordsError] = useState(null);
 
-  const [activeTab, setActiveTab] = useState("my_records");
-
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(location.state?.activeTab || "my_records");
   // Data Upload State
   const [fileData, setFileData] = useState(null);
   const [fileName, setFileName] = useState("");
@@ -26,7 +26,6 @@ export default function AnalystWorkspace() {
   const [sourceFilter, setSourceFilter] = useState("All");
 
   // Manual Scan State
-  const location = useLocation();
   const [domain, setDomain] = useState(location.state?.domain || "");
   const [scanError, setScanError] = useState("");
   const [loading, setLoading] = useState(false);

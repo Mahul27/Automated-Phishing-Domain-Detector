@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import { fetchDashboardSummary, fetchScans } from "../Services/api";
 import Button from "../components/Button";
@@ -15,6 +16,7 @@ import {
 } from "recharts";
 
 export default function LiveDashboard() {
+  const navigate = useNavigate();
   const [summaryData, setSummaryData] = useState(null);
   const [liveRecords, setLiveRecords] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -345,12 +347,17 @@ export default function LiveDashboard() {
               })()}
             </div>
             <div className="info-card">
-              <h3>SYSTEM STATUS</h3>
-              <ul>
-                <li>Feed collector: active</li>
-                <li>Risk scoring: status</li>
-                <li>Last data collection: Completed</li>
-              </ul>
+              <h3>MANUAL INVESTIGATION</h3>
+              <p style={{ fontSize: "14px", color: "#64748b", marginBottom: "15px" }}>
+                Need to investigate a specific domain? You can run a manual scan or import domains from a file.
+              </p>
+              <Button
+                variant="primary"
+                onClick={() => navigate("/workspace", { state: { activeTab: "manual_search" } })}
+                style={{ width: "100%" }}
+              >
+                Go to Manual Search
+              </Button>
             </div>
           </section>
 
