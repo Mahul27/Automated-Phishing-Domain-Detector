@@ -1,0 +1,27 @@
+{
+    "model_type": "XGBClassifier",
+    "features_order": [
+        "domain_length",
+        "num_hyphens",
+        "entropy_domain",
+        "domain_age_days",
+        "expiration_days",
+        "is_suspicious_tld",
+        "Num_Digits",
+        "Contains_Brand_Keyword",
+        "Typosquat_Similarity",
+        "SSL_Cert_Age_Days"
+    ],
+    "recommened_threshold": 0.8303365111351013,
+    "threshold_description": "This threshold was determined based on the ROC curve analysis to balance sensitivity and specificity for phishing domain detection.",
+    "expected_performance_at_0.5_threshold": {
+        "precision": 0.90625,
+        "recall": 0.87,
+        "false_positive_rate": 0.09
+    },
+    "expected_performance_at_recommended_threshold": {
+        "precision": 0.9855072463768116,
+        "recall": 0.68,
+        "false_positive_rate": 0.01
+    }
+}
