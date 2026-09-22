@@ -12,16 +12,16 @@
         "Typosquat_Similarity",
         "SSL_Cert_Age_Days"
     ],
-    "recommened_threshold": 0.8303365111351013,
-    "threshold_description": "This threshold was determined based on the ROC curve analysis to balance sensitivity and specificity for phishing domain detection.",
-    "expected_performance_at_0.5_threshold": {
+    "classifcation_threshold": 0.5,
+    "threshold_adjustment_info": "I've set the default threshold since the model was trained with a default threshold of 0.5. It produced a false positive rate of 9%, but it achieved results of Recall of 87% which meets the requirement of 85% Recall.",
+    "expected_performance": {
         "precision": 0.90625,
         "recall": 0.87,
-        "false_positive_rate": 0.09
-    },
-    "expected_performance_at_recommended_threshold": {
-        "precision": 0.9855072463768116,
-        "recall": 0.68,
-        "false_positive_rate": 0.01
+        "f1_score": 0.8877551020408163,
+        "roc_auc": 0.9407,
+        "true_negatives": 91,
+        "false_positives": 9,
+        "false_negatives": 13,
+        "true_positives": 87
     }
 }
