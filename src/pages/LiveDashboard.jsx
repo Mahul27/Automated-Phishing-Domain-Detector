@@ -348,13 +348,24 @@ export default function LiveDashboard() {
             </div>
             <div className="info-card">
               <h3>MANUAL INVESTIGATION</h3>
-              <p style={{ fontSize: "14px", color: "#64748b", marginBottom: "15px" }}>
-                Need to investigate a specific domain? You can run a manual scan or import domains from a file.
+              <p
+                style={{
+                  fontSize: "14px",
+                  color: "#64748b",
+                  marginBottom: "15px",
+                }}
+              >
+                Need to investigate a specific domain? You can run a manual scan
+                or import domains from a file.
               </p>
               <Button
                 variant="primary"
-                onClick={() => navigate("/workspace", { state: { activeTab: "manual_search" } })}
-                style={{ width: "100%" }}
+                onClick={() =>
+                  navigate("/workspace", {
+                    state: { activeTab: "manual_search" },
+                  })
+                }
+                style={{ width: "25%" }}
               >
                 Go to Manual Search
               </Button>
