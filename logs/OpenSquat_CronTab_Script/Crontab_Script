@@ -1,0 +1,1 @@
+30 20 * * * cd "/Users/(yourname)/(Folder)/Automated-Phishing-Domain-Detector" && /Users/(yourname)/(Folder)/Automated-Phishing-Domain-Detector/venv/bin/opensquat -k keywords.txt >> logs/opensquat.log 2>&1
