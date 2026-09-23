@@ -2,12 +2,13 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import Button from "../components/Button";
 import logo from "../assets/logo.webp";
+import { supabase } from "../utils/supabase";
 
 export default function Signup() {
   const navigate = useNavigate();
   const [error, setError] = useState("");
 
-  const handleSignup = (e) => {
+  const handleSignup = async (e) => {
     e.preventDefault();
     const email = e.target.email.value;
     const password = e.target.password.value;
@@ -18,12 +19,17 @@ export default function Signup() {
       return;
     }
 
-    // Save to localStorage for demo purposes
-    localStorage.setItem("userEmail", email);
-    localStorage.setItem("userPassword", password);
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
 
-    alert("Account created successfully! You can now login.");
-    navigate("/");
+    if (error) {
+      setError(error.message);
+    } else {
+      alert("Account created successfully! You can now login.");
+      navigate("/");
+    }
   };
 
   return (

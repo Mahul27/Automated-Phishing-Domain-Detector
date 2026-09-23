@@ -1,8 +1,16 @@
-import { NavLink, Link, useLocation } from "react-router-dom";
+import { NavLink, Link, useLocation, useNavigate } from "react-router-dom";
+import { supabase } from "../utils/supabase";
 
 export default function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const isReviewPage = location.pathname.startsWith("/review");
+
+  const handleSignOut = async (e) => {
+    e.preventDefault();
+    await supabase.auth.signOut();
+    navigate("/");
+  };
 
   return (
     <aside className="sidebar">
@@ -55,9 +63,9 @@ export default function Sidebar() {
       </div>
 
       <div>
-        <Link to="/" className="signout-link">
+        <a href="/" onClick={handleSignOut} className="signout-link">
           Sign out
-        </Link>
+        </a>
       </div>
     </aside>
   );

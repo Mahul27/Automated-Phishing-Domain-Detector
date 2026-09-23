@@ -8,6 +8,7 @@ import LiveReviewQueue from "./pages/LiveReviewQueue";
 import ScanResult from "./pages/ScanResult";
 import Layout from "./components/Layout";
 
+import ProtectedRoute from "./components/ProtectedRoute";
 import "./index.css";
 
 function App() {
@@ -21,7 +22,9 @@ function App() {
         {/* Authenticated Routes with Sidebar/Layout */}
         <Route
           element={
-            <Layout />
+            <ProtectedRoute>
+              <Layout />
+            </ProtectedRoute>
           }
         >
           <Route path="/dashboard" element={<LiveDashboard />} />
