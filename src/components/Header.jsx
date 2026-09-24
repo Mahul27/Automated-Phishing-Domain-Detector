@@ -1,5 +1,5 @@
 export default function Header({ title, subtitle, tag, noBorder = false }) {
-  const activeUser = localStorage.getItem('activeUser') || 'Logged in';
+  const activeUser = 'Analyst';
 
   return (
     <div className={`header-row ${noBorder ? 'no-border' : ''}`}>

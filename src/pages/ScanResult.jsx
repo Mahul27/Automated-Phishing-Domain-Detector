@@ -21,8 +21,8 @@ export default function ScanResult() {
   const searchId = parseInt(id);
   const isPersonalRecord = source === "personal";
 
-  const loadRecord = async () => {
-    setLoading(true);
+  const loadRecord = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     setError(null);
     try {
       const data = await fetchScan(searchId);
@@ -35,7 +35,8 @@ export default function ScanResult() {
   };
 
   useEffect(() => {
-    loadRecord();
+    loadRecord(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchId]);
 
   if (loading || error || !record) {

@@ -2,29 +2,26 @@ import { useNavigate, Link } from "react-router-dom";
 import { useState } from "react";
 import logo from "../assets/logo.webp"; // Using the uploaded logo
 import Button from "../components/Button";
+import { supabase } from "../utils/supabase";
 
 export default function Login() {
   const navigate = useNavigate();
   const [error, setError] = useState("");
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    const username = e.target.username.value;
+    const email = e.target.username.value;
     const password = e.target.password.value;
 
-    // Retrieve stored credentials from localStorage
-    const storedEmail = localStorage.getItem("userEmail");
-    const storedPassword = localStorage.getItem("userPassword");
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-    // Check against local storage or default admin
-    if (
-      (username === storedEmail && password === storedPassword) ||
-      (username === "admin" && password === "password")
-    ) {
-      localStorage.setItem("activeUser", username);
-      navigate("/dashboard");
+    if (error) {
+      setError(error.message);
     } else {
-      setError("Invalid credentials! Please check your email and password.");
+      navigate("/dashboard");
     }
   };
 

@@ -18,8 +18,8 @@ export default function LiveReviewQueue() {
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 15;
 
-  const loadRecords = async () => {
-    setLoading(true);
+  const loadRecords = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     setError(null);
     try {
       const res = await fetchScans("live");
@@ -32,7 +32,7 @@ export default function LiveReviewQueue() {
   };
 
   useEffect(() => {
-    loadRecords();
+    loadRecords(false);
   }, []);
 
   const handleClearFilters = () => {

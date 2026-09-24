@@ -34,7 +34,7 @@ let liveRecords = [
     prediction: "Legitimate",
     review_status: "Completed",
     decision: "False Positive",
-    reviewer: "Admin",
+    reviewer: "Analyst",
     review_date: new Date().toISOString(),
     scan_time: new Date().toISOString(),
   },
