@@ -24,6 +24,15 @@ export default function AnalystWorkspace() {
   const [riskFilter, setRiskFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
   const [sourceFilter, setSourceFilter] = useState("All");
+  const [sortOption, setSortOption] = useState("Highest risk first");
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setRiskFilter("All");
+    setStatusFilter("All");
+    setSourceFilter("All");
+    setSortOption("Highest risk first");
+  };
 
   // Manual Scan State
   const [domain, setDomain] = useState(location.state?.domain || "");
@@ -31,8 +40,8 @@ export default function AnalystWorkspace() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const loadPersonalRecords = async () => {
-    setRecordsLoading(true);
+  const loadPersonalRecords = async (showLoading = true) => {
+    if (showLoading) setRecordsLoading(true);
     setRecordsError(null);
     try {
       const res = await fetchScans("personal");
@@ -45,7 +54,7 @@ export default function AnalystWorkspace() {
   };
 
   useEffect(() => {
-    loadPersonalRecords();
+    loadPersonalRecords(false);
   }, []);
 
   const handleBrowseClick = () => {
@@ -129,7 +138,8 @@ export default function AnalystWorkspace() {
     const matchesSearch =
       r.domain.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (r.original &&
-        r.original.toLowerCase().includes(searchTerm.toLowerCase()));
+        r.original.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      r.id.toString().includes(searchTerm);
 
     let matchesRisk = true;
     if (riskFilter === "High") {
@@ -156,6 +166,17 @@ export default function AnalystWorkspace() {
 
     return matchesSearch && matchesRisk && matchesStatus && matchesSource;
   });
+
+  const sortedRecords = [...filteredRecords];
+  if (sortOption === "Highest risk first") {
+    sortedRecords.sort((a, b) => (b.risk_score || 0) - (a.risk_score || 0));
+  } else if (sortOption === "Lowest risk first") {
+    sortedRecords.sort((a, b) => (a.risk_score || 0) - (b.risk_score || 0));
+  } else if (sortOption === "Newest first") {
+    sortedRecords.sort((a, b) => new Date(b.scan_time || 0) - new Date(a.scan_time || 0));
+  } else if (sortOption === "Oldest first") {
+    sortedRecords.sort((a, b) => new Date(a.scan_time || 0) - new Date(b.scan_time || 0));
+  }
 
   return (
     <>
@@ -300,6 +321,11 @@ export default function AnalystWorkspace() {
                     <option value="Import">File import</option>
                   </select>
                 </div>
+                <div style={{ display: "flex", alignItems: "flex-end", marginBottom: "2px" }}>
+                  <Button variant="outline" size="small" onClick={clearFilters}>
+                    Clear Filters
+                  </Button>
+                </div>
               </div>
 
               <div
@@ -318,8 +344,15 @@ export default function AnalystWorkspace() {
                   style={{ display: "flex", alignItems: "center", gap: "10px" }}
                 >
                   <span style={{ fontSize: "12px" }}>Sort by</span>
-                  <select style={{ padding: "5px" }}>
-                    <option>Highest score first</option>
+                  <select 
+                    style={{ padding: "5px" }} 
+                    value={sortOption} 
+                    onChange={(e) => setSortOption(e.target.value)}
+                  >
+                    <option value="Highest risk first">Highest risk first</option>
+                    <option value="Lowest risk first">Lowest risk first</option>
+                    <option value="Newest first">Newest first</option>
+                    <option value="Oldest first">Oldest first</option>
                   </select>
                 </div>
               </div>
@@ -336,7 +369,7 @@ export default function AnalystWorkspace() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredRecords.map((item) => (
+                  {sortedRecords.map((item) => (
                     <tr key={item.id}>
                       <td>
                         <div style={{ fontWeight: "bold" }}>{item.domain}</div>
@@ -348,14 +381,14 @@ export default function AnalystWorkspace() {
                       </td>
                       <td
                         style={{
-                          color: item.risk_score > 75 ? "red" : "orange",
+                          color: item.risk_score >= 75 ? "red" : item.risk_score >= 40 ? "orange" : "green",
                         }}
                       >
                         {item.prediction}
                       </td>
                       <td
                         style={{
-                          color: item.risk_score > 75 ? "red" : "orange",
+                          color: item.risk_score >= 75 ? "red" : item.risk_score >= 40 ? "orange" : "green",
                         }}
                       >
                         {item.risk_score}
@@ -388,13 +421,13 @@ export default function AnalystWorkspace() {
                       </td>
                     </tr>
                   ))}
-                  {filteredRecords.length === 0 && (
+                  {sortedRecords.length === 0 && (
                     <tr>
                       <td
                         colSpan="6"
-                        style={{ padding: "20px", textAlign: "center" }}
+                        style={{ padding: "20px", textAlign: "center", color: "gray" }}
                       >
-                        No records to display.
+                        No records match the current filters.
                       </td>
                     </tr>
                   )}

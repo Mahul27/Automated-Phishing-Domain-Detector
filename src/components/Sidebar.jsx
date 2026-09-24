@@ -1,4 +1,4 @@
-import { NavLink, Link, useLocation, useNavigate } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../utils/supabase";
 
 export default function Sidebar() {

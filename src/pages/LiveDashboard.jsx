@@ -25,8 +25,8 @@ export default function LiveDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const alertsPerPage = 10;
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     setError(null);
     try {
       const [summaryRes, scansRes] = await Promise.all([
@@ -43,7 +43,7 @@ export default function LiveDashboard() {
   };
 
   useEffect(() => {
-    loadData();
+    loadData(false);
   }, []);
 
   const totalPages = Math.max(1, Math.ceil(liveRecords.length / alertsPerPage));
