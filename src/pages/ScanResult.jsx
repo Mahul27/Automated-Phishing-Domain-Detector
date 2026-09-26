@@ -293,15 +293,19 @@ export default function ScanResult() {
               <td
                 style={{
                   color:
-                    record.ssl_cert_age && (record.ssl_cert_age.includes("day") ||
-                    record.ssl_cert_age.includes("month"))
+                    record.ssl_cert_age != null &&
+                    (String(record.ssl_cert_age).includes("day") ||
+                      String(record.ssl_cert_age).includes("month") ||
+                      (typeof record.ssl_cert_age === "number" && record.ssl_cert_age < 365))
                       ? "red"
                       : "green",
                   fontWeight: "bold",
                 }}
               >
-                {record.ssl_cert_age && (record.ssl_cert_age.includes("day") ||
-                record.ssl_cert_age.includes("month"))
+                {record.ssl_cert_age != null &&
+                (String(record.ssl_cert_age).includes("day") ||
+                  String(record.ssl_cert_age).includes("month") ||
+                  (typeof record.ssl_cert_age === "number" && record.ssl_cert_age < 365))
                   ? "High Risk"
                   : "Low Risk"}
               </td>
