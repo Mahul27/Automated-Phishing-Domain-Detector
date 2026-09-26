@@ -5,6 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "backend:setup": "python3 -m venv .venv && .venv/bin/python -m pip install -r requirements.txt",
+    "backend": ".venv/bin/python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000",
+    "backend:test": ".venv/bin/python -m unittest discover -s backend/tests -v",
+    "domains:refresh": ".venv/bin/python -m backend.scripts.refresh_live",
+    "domains:check": ".venv/bin/python -m backend.scripts.refresh_live --source-only",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"

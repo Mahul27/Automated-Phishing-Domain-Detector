@@ -20,6 +20,10 @@ venv/
 .venv/
 __pycache__/
 *.pyc
+backend/data/scans.db*
+backend/data/feature_cache.json
+# OpenSquat may leave a downloaded source feed in its working directory.
+backend/opensquat-nrd-latest.txt
 
 # Editor directories and files
 .vscode/*
