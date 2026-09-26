@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
-import { fetchDashboardSummary, fetchScans } from "../Services/api";
+import { fetchDashboardSummary, fetchScans } from "../api/client";
 import Button from "../components/Button";
 import ApiState from "../components/ApiState";
 import {
@@ -34,7 +34,7 @@ export default function LiveDashboard() {
         fetchScans("live"),
       ]);
       setSummaryData(summaryRes);
-      setLiveRecords(Array.isArray(scansRes) ? scansRes : scansRes.records || []);
+      setLiveRecords(scansRes.records || []);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -56,7 +56,13 @@ export default function LiveDashboard() {
     <>
       <Header
         title="Live dashboard"
-        subtitle="Live overview of newly registered domains and flagged alerts"
+        subtitle={
+          liveRecords.some((record) =>
+            record.model_name?.startsWith("Heuristic"),
+          )
+            ? "Live overview of newly registered domains · Test scores until the training CSV is available"
+            : "Live overview of newly registered domains and flagged alerts"
+        }
       />
 
       <ApiState loading={loading} error={error} onRetry={loadData} />
@@ -119,7 +125,7 @@ export default function LiveDashboard() {
                     fontSize: "14px",
                   }}
                 >
-                  Newly observed domains across the last seven days
+                  Cumulative monitored domains across the last seven days
                 </p>
               </div>
               <div
@@ -181,15 +187,15 @@ export default function LiveDashboard() {
                   />
                   <Area
                     type="monotone"
-                    dataKey="detected"
+                    dataKey="monitored"
                     fill="#d1fae5"
                     stroke="none"
                     fillOpacity={0.5}
                   />
                   <Line
                     type="monotone"
-                    dataKey="detected"
-                    name="Detected"
+                    dataKey="monitored"
+                    name="Monitored"
                     stroke="#059669"
                     strokeWidth={2}
                     dot={false}
@@ -202,8 +208,8 @@ export default function LiveDashboard() {
                   />
                   <Line
                     type="monotone"
-                    dataKey="critical"
-                    name="Critical"
+                    dataKey="high_risk"
+                    name="High risk"
                     stroke="#ef4444"
                     strokeWidth={2}
                     strokeDasharray="5 5"

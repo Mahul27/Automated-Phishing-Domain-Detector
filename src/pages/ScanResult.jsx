@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Header from "../components/Header";
 import { useParams, useNavigate } from "react-router-dom";
-import { fetchScan, updateScanReview } from "../Services/api";
+import { fetchScan, updateScanReview } from "../api/client";
 import { getRiskColor } from "../utils/risk";
 import Button from "../components/Button";
 import ApiState from "../components/ApiState";
@@ -52,7 +52,9 @@ export default function ScanResult() {
             <h2>Scan result not found.</h2>
             <Button
               variant="secondary"
-              onClick={() => navigate(isPersonalRecord ? "/workspace" : "/queue")}
+              onClick={() =>
+                navigate(isPersonalRecord ? "/workspace" : "/queue")
+              }
             >
               &larr; Return to Scan History
             </Button>
@@ -62,6 +64,26 @@ export default function ScanResult() {
     );
   }
 
+  const features = record.features || {};
+  const hasShapExplanation =
+    record.model_name === "XGBoost" &&
+    typeof record.explanation === "string" &&
+    record.explanation.startsWith("XGBoost SHAP");
+  const youngDomain =
+    features.domain_age_days != null && features.domain_age_days <= 30;
+  const shortRegistration =
+    features.registration_period_days != null &&
+    features.registration_period_days <= 365;
+  const highEntropy =
+    features.entropy_domain != null && features.entropy_domain >= 3.5;
+  const brandMatch = Boolean(features.brand_keyword);
+  const closeBrandMatch =
+    features.typosquatting_score != null &&
+    features.typosquatting_score >= 0.75;
+  const newCertificate =
+    features.ssl_certificate_age_days != null &&
+    features.ssl_certificate_age_days <= 30;
+
   const handleSaveDecision = async () => {
     if (reviewStatus === "pending") {
       navigate(isPersonalRecord ? "/workspace" : "/queue");
@@ -69,10 +91,14 @@ export default function ScanResult() {
     }
 
     setSubmitting(true);
-    const decisionText = reviewStatus === "phishing" ? "Confirmed Phishing" : "False Positive";
+    const decisionText =
+      reviewStatus === "phishing" ? "Confirmed Phishing" : "False Positive";
 
     try {
-      await updateScanReview(searchId, { decision: decisionText, note: analystNote });
+      await updateScanReview(searchId, {
+        decision: decisionText,
+        note: analystNote,
+      });
       navigate(isPersonalRecord ? "/workspace" : "/queue");
     } catch (err) {
       console.error("Failed to submit decision", err);
@@ -123,7 +149,7 @@ export default function ScanResult() {
             </span>
           </li>
           <li style={{ marginBottom: "10px" }}>
-            <strong>Model Prediction:</strong>{" "}
+            <strong>Prediction:</strong>{" "}
             <span
               style={{
                 color: getRiskColor(record.risk_score),
@@ -132,6 +158,9 @@ export default function ScanResult() {
             >
               {record.prediction}
             </span>
+          </li>
+          <li style={{ marginBottom: "10px" }}>
+            <strong>Analysis Method:</strong> <span>{record.model_name}</span>
           </li>
           {record.review_status === "Completed" && (
             <>
@@ -147,7 +176,11 @@ export default function ScanResult() {
                 <strong>Reviewer:</strong> <span>{record.reviewer}</span>
               </li>
               <li style={{ marginBottom: "10px" }}>
-                <strong>Review Date:</strong> <span>{record.review_date || new Date(record.scan_time).toLocaleString()}</span>
+                <strong>Review Date:</strong>{" "}
+                <span>
+                  {record.review_date ||
+                    new Date(record.scan_time).toLocaleString()}
+                </span>
               </li>
             </>
           )}
@@ -164,7 +197,7 @@ export default function ScanResult() {
         }}
       >
         <h2>Feature & Risk Information</h2>
-        <p>Values extracted by the backend ML model:</p>
+        <p>Values returned by the backend analyzer:</p>
         <table className="app-table" style={{ marginTop: "10px" }}>
           <thead>
             <tr style={{ backgroundColor: "#f0f0f0", textAlign: "left" }}>
@@ -179,18 +212,15 @@ export default function ScanResult() {
               <td>{record.domain_age}</td>
               <td
                 style={{
-                  color:
-                    record.domain_age && (record.domain_age.includes("day") ||
-                    record.domain_age.includes("week"))
-                      ? "red"
-                      : "green",
+                  color: youngDomain ? "red" : "green",
                   fontWeight: "bold",
                 }}
               >
-                {record.domain_age && (record.domain_age.includes("day") ||
-                record.domain_age.includes("week"))
-                  ? "High Risk"
-                  : "Low Risk"}
+                {features.domain_age_days == null
+                  ? "Unknown"
+                  : youngDomain
+                    ? "High Risk"
+                    : "Low Risk"}
               </td>
             </tr>
             <tr>
@@ -198,14 +228,15 @@ export default function ScanResult() {
               <td>{record.registration_period}</td>
               <td
                 style={{
-                  color:
-                    record.registration_period === "1 year" ? "red" : "green",
+                  color: shortRegistration ? "red" : "green",
                   fontWeight: "bold",
                 }}
               >
-                {record.registration_period === "1 year"
-                  ? "High Risk"
-                  : "Low Risk"}
+                {features.registration_period_days == null
+                  ? "Unknown"
+                  : shortRegistration
+                    ? "High Risk"
+                    : "Low Risk"}
               </td>
             </tr>
             <tr>
@@ -249,11 +280,15 @@ export default function ScanResult() {
               <td>{record.shannon_entropy} entropy</td>
               <td
                 style={{
-                  color: record.shannon_entropy === "High" ? "red" : "green",
+                  color: highEntropy ? "red" : "green",
                   fontWeight: "bold",
                 }}
               >
-                {record.shannon_entropy === "High" ? "High Risk" : "Low Risk"}
+                {features.entropy_domain == null
+                  ? "Unknown"
+                  : highEntropy
+                    ? "High Risk"
+                    : "Low Risk"}
               </td>
             </tr>
             <tr>
@@ -261,11 +296,11 @@ export default function ScanResult() {
               <td>{record.brand_keyword}</td>
               <td
                 style={{
-                  color: record.brand_keyword !== "None" ? "red" : "green",
+                  color: brandMatch ? "red" : "green",
                   fontWeight: "bold",
                 }}
               >
-                {record.brand_keyword !== "None" ? "High Risk" : "Low Risk"}
+                {brandMatch ? "High Risk" : "Low Risk"}
               </td>
             </tr>
             <tr>
@@ -273,18 +308,15 @@ export default function ScanResult() {
               <td>{record.typosquatting_similarity}</td>
               <td
                 style={{
-                  color:
-                    record.typosquatting_similarity !== "Exact Match" &&
-                    record.typosquatting_similarity !== "Low"
-                      ? "red"
-                      : "green",
+                  color: closeBrandMatch ? "red" : "green",
                   fontWeight: "bold",
                 }}
               >
-                {record.typosquatting_similarity !== "Exact Match" &&
-                record.typosquatting_similarity !== "Low"
-                  ? "High Risk"
-                  : "Low Risk"}
+                {features.typosquatting_score == null
+                  ? "Unknown"
+                  : closeBrandMatch
+                    ? "High Risk"
+                    : "Low Risk"}
               </td>
             </tr>
             <tr>
@@ -292,22 +324,15 @@ export default function ScanResult() {
               <td>{record.ssl_cert_age}</td>
               <td
                 style={{
-                  color:
-                    record.ssl_cert_age != null &&
-                    (String(record.ssl_cert_age).includes("day") ||
-                      String(record.ssl_cert_age).includes("month") ||
-                      (typeof record.ssl_cert_age === "number" && record.ssl_cert_age < 365))
-                      ? "red"
-                      : "green",
+                  color: newCertificate ? "red" : "green",
                   fontWeight: "bold",
                 }}
               >
-                {record.ssl_cert_age != null &&
-                (String(record.ssl_cert_age).includes("day") ||
-                  String(record.ssl_cert_age).includes("month") ||
-                  (typeof record.ssl_cert_age === "number" && record.ssl_cert_age < 365))
-                  ? "High Risk"
-                  : "Low Risk"}
+                {features.ssl_certificate_age_days == null
+                  ? "Unknown"
+                  : newCertificate
+                    ? "High Risk"
+                    : "Low Risk"}
               </td>
             </tr>
             <tr>
@@ -331,7 +356,45 @@ export default function ScanResult() {
         </table>
       </section>
 
-      {/* 3. Human Decision */}
+      {/* 3. Model explanation */}
+      <section
+        style={{
+          border: "1px solid black",
+          padding: "20px",
+          marginBottom: "20px",
+          backgroundColor: "#fff",
+        }}
+      >
+        <h2>SHAP Explanation</h2>
+        <p style={{ color: "#64748b" }}>
+          {hasShapExplanation
+            ? "The strongest feature contributions to this XGBoost prediction:"
+            : "SHAP values are available only for scans made with the trained XGBoost model."}
+        </p>
+        <div
+          style={{
+            padding: "16px",
+            backgroundColor: "#f8f9fa",
+            borderRadius: "6px",
+            borderLeft: "4px solid #cbd5e1",
+          }}
+        >
+          <p style={{ margin: 0, whiteSpace: "pre-wrap", lineHeight: "1.5" }}>
+            {hasShapExplanation
+              ? record.explanation
+              : record.model_name === "XGBoost"
+                ? "No SHAP values were saved for this scan."
+                : "This scan used the heuristic fallback, so it has no SHAP values."}
+          </p>
+          {!hasShapExplanation && record.explanation && (
+            <p style={{ margin: "12px 0 0", lineHeight: "1.5" }}>
+              <strong>Current analysis:</strong> {record.explanation}
+            </p>
+          )}
+        </div>
+      </section>
+
+      {/* 4. Human Decision */}
       <section
         style={{
           border: "1px solid black",
@@ -347,8 +410,11 @@ export default function ScanResult() {
             </h2>
             <p style={{ marginBottom: "12px" }}>
               This scan was reviewed by <strong>{record.reviewer}</strong> on{" "}
-              <strong>{record.review_date || new Date(record.scan_time).toLocaleString()}</strong>. The final decision was{" "}
-              <strong>{record.decision}</strong>.
+              <strong>
+                {record.review_date ||
+                  new Date(record.scan_time).toLocaleString()}
+              </strong>
+              . The final decision was <strong>{record.decision}</strong>.
             </p>
             {record.note && (
               <div
@@ -520,7 +586,11 @@ export default function ScanResult() {
               </div>
             </div>
 
-            <Button variant="primary" onClick={handleSaveDecision} disabled={submitting}>
+            <Button
+              variant="primary"
+              onClick={handleSaveDecision}
+              disabled={submitting}
+            >
               {submitting ? "Saving..." : "Save decision"}
             </Button>
           </>
