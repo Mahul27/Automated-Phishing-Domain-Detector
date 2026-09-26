@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS scan_results (
       scan_id INT AUTO_INCREMENT PRIMARY KEY,
       
   -- User who made the scan
-      user_id INT NOT NULL,
+      user_id INT NULL,
       
 -- The domain that was scanned
 	  domain_id INT NOT NULL,
