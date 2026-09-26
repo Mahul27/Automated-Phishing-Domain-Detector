@@ -19,15 +19,19 @@ export default function Signup() {
       return;
     }
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
     });
 
     if (error) {
       setError(error.message);
+    } else if (data.session) {
+      navigate("/dashboard");
     } else {
-      alert("Account created successfully! You can now login.");
+      alert(
+        "Account created. Check your email to confirm it before logging in.",
+      );
       navigate("/");
     }
   };
@@ -72,6 +76,7 @@ export default function Signup() {
                   type="password"
                   name="password"
                   placeholder="Password"
+                  minLength="8"
                   required
                 />
               </div>
@@ -81,6 +86,7 @@ export default function Signup() {
                   type="password"
                   name="confirmPassword"
                   placeholder="Confirm Password"
+                  minLength="8"
                   required
                 />
               </div>
