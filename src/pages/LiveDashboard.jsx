@@ -34,7 +34,7 @@ export default function LiveDashboard() {
         fetchScans("live"),
       ]);
       setSummaryData(summaryRes);
-      setLiveRecords(scansRes.records || []);
+      setLiveRecords(Array.isArray(scansRes) ? scansRes : scansRes.records || []);
     } catch (err) {
       setError(err.message);
     } finally {
