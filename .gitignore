@@ -18,6 +18,7 @@ dist-ssr
 # Python environment
 venv/
 .venv/
+.venv-mac/
 __pycache__/
 *.pyc
 backend/data/scans.db*
