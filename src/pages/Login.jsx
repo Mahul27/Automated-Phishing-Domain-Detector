@@ -53,9 +53,9 @@ export default function Login() {
             <form id="login-form" onSubmit={handleLogin}>
               <div className="form-group">
                 <input
-                  type="text"
+                  type="email"
                   name="username"
-                  placeholder="Username or Email"
+                  placeholder="Email Address"
                   required
                 />
               </div>

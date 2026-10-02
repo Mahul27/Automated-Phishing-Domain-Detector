@@ -5,7 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "backend": "node mock_backend.js",
+    "backend:setup": "python3 -m venv .venv && .venv/bin/python -m pip install -r requirements.txt",
+    "backend": ".venv/bin/python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000",
+    "backend:test": ".venv/bin/python -m unittest discover -s backend/tests -v",
+    "domains:refresh": ".venv/bin/python -m backend.scripts.refresh_live",
+    "domains:check": ".venv/bin/python -m backend.scripts.refresh_live --source-only",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
@@ -22,11 +26,9 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.4",
-    "cors": "^2.8.6",
     "eslint": "^10.8.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.3",
-    "express": "^5.2.1",
     "globals": "^17.7.0",
     "vite": "^8.2.0"
   }

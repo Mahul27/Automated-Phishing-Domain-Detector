@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../components/Header";
-import { fetchScans, createScan, uploadScanFile } from "../Services/api";
+import { fetchScans, createScan, uploadScanFile } from "../api/client";
 import Button from "../components/Button";
 import ApiState from "../components/ApiState";
 
@@ -11,7 +11,9 @@ export default function AnalystWorkspace() {
   const [recordsError, setRecordsError] = useState(null);
 
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState(location.state?.activeTab || "my_records");
+  const [activeTab, setActiveTab] = useState(
+    location.state?.activeTab || "my_records",
+  );
   // Data Upload State
   const [fileData, setFileData] = useState(null);
   const [fileName, setFileName] = useState("");
@@ -143,11 +145,16 @@ export default function AnalystWorkspace() {
 
     let matchesRisk = true;
     if (riskFilter === "High") {
-      matchesRisk = r.prediction?.toLowerCase() === "high" || r.risk_score >= 75;
+      matchesRisk =
+        r.prediction?.toLowerCase() === "high" || r.risk_score >= 75;
     } else if (riskFilter === "Medium") {
-      matchesRisk = r.prediction?.toLowerCase() === "medium" || (r.risk_score >= 40 && r.risk_score < 75);
+      matchesRisk =
+        r.prediction?.toLowerCase() === "medium" ||
+        (r.risk_score >= 40 && r.risk_score < 75);
     } else if (riskFilter === "Low") {
-      matchesRisk = r.prediction?.toLowerCase() === "low" || (r.risk_score !== undefined && r.risk_score < 40);
+      matchesRisk =
+        r.prediction?.toLowerCase() === "low" ||
+        (r.risk_score !== undefined && r.risk_score < 40);
     }
 
     let matchesStatus = true;
@@ -173,9 +180,13 @@ export default function AnalystWorkspace() {
   } else if (sortOption === "Lowest risk first") {
     sortedRecords.sort((a, b) => (a.risk_score || 0) - (b.risk_score || 0));
   } else if (sortOption === "Newest first") {
-    sortedRecords.sort((a, b) => new Date(b.scan_time || 0) - new Date(a.scan_time || 0));
+    sortedRecords.sort(
+      (a, b) => new Date(b.scan_time || 0) - new Date(a.scan_time || 0),
+    );
   } else if (sortOption === "Oldest first") {
-    sortedRecords.sort((a, b) => new Date(a.scan_time || 0) - new Date(b.scan_time || 0));
+    sortedRecords.sort(
+      (a, b) => new Date(a.scan_time || 0) - new Date(b.scan_time || 0),
+    );
   }
 
   return (
@@ -282,7 +293,7 @@ export default function AnalystWorkspace() {
                   <label style={{ fontSize: "12px", fontWeight: "bold" }}>
                     Risk level
                   </label>
-                  <select 
+                  <select
                     style={{ width: "150px", padding: "5px" }}
                     value={riskFilter}
                     onChange={(e) => setRiskFilter(e.target.value)}
@@ -297,7 +308,7 @@ export default function AnalystWorkspace() {
                   <label style={{ fontSize: "12px", fontWeight: "bold" }}>
                     Review status
                   </label>
-                  <select 
+                  <select
                     style={{ width: "150px", padding: "5px" }}
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
@@ -311,7 +322,7 @@ export default function AnalystWorkspace() {
                   <label style={{ fontSize: "12px", fontWeight: "bold" }}>
                     Record source
                   </label>
-                  <select 
+                  <select
                     style={{ width: "150px", padding: "5px" }}
                     value={sourceFilter}
                     onChange={(e) => setSourceFilter(e.target.value)}
@@ -321,7 +332,13 @@ export default function AnalystWorkspace() {
                     <option value="Import">File import</option>
                   </select>
                 </div>
-                <div style={{ display: "flex", alignItems: "flex-end", marginBottom: "2px" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-end",
+                    marginBottom: "2px",
+                  }}
+                >
                   <Button variant="outline" size="small" onClick={clearFilters}>
                     Clear Filters
                   </Button>
@@ -344,12 +361,14 @@ export default function AnalystWorkspace() {
                   style={{ display: "flex", alignItems: "center", gap: "10px" }}
                 >
                   <span style={{ fontSize: "12px" }}>Sort by</span>
-                  <select 
-                    style={{ padding: "5px" }} 
-                    value={sortOption} 
+                  <select
+                    style={{ padding: "5px" }}
+                    value={sortOption}
                     onChange={(e) => setSortOption(e.target.value)}
                   >
-                    <option value="Highest risk first">Highest risk first</option>
+                    <option value="Highest risk first">
+                      Highest risk first
+                    </option>
                     <option value="Lowest risk first">Lowest risk first</option>
                     <option value="Newest first">Newest first</option>
                     <option value="Oldest first">Oldest first</option>
@@ -381,14 +400,24 @@ export default function AnalystWorkspace() {
                       </td>
                       <td
                         style={{
-                          color: item.risk_score >= 75 ? "red" : item.risk_score >= 40 ? "orange" : "green",
+                          color:
+                            item.risk_score >= 75
+                              ? "red"
+                              : item.risk_score >= 40
+                                ? "orange"
+                                : "green",
                         }}
                       >
                         {item.prediction}
                       </td>
                       <td
                         style={{
-                          color: item.risk_score >= 75 ? "red" : item.risk_score >= 40 ? "orange" : "green",
+                          color:
+                            item.risk_score >= 75
+                              ? "red"
+                              : item.risk_score >= 40
+                                ? "orange"
+                                : "green",
                         }}
                       >
                         {item.risk_score}
@@ -425,7 +454,11 @@ export default function AnalystWorkspace() {
                     <tr>
                       <td
                         colSpan="6"
-                        style={{ padding: "20px", textAlign: "center", color: "gray" }}
+                        style={{
+                          padding: "20px",
+                          textAlign: "center",
+                          color: "gray",
+                        }}
                       >
                         No records match the current filters.
                       </td>
@@ -470,7 +503,7 @@ export default function AnalystWorkspace() {
             <div className="state-box" style={{ marginTop: "20px" }}>
               <strong>LOADING STATE</strong>
               <p>Scanning domain...</p>
-              <p>Extracting lexical, WHOIS, SSL, DNS, and hosting features.</p>
+              <p>Calculating demo lexical and risk features.</p>
             </div>
           )}
 

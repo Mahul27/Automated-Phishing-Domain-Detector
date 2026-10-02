@@ -1,3 +1,5 @@
+import { supabase } from "../utils/supabase";
+
 const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000"
 ).replace(/\/$/, "");
@@ -16,9 +18,15 @@ async function readResponseBody(response) {
 
 async function apiRequest(path, options = {}) {
   let response;
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw new Error(error.message);
+  const headers = new Headers(options.headers);
+  if (data.session?.access_token) {
+    headers.set("Authorization", `Bearer ${data.session.access_token}`);
+  }
 
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, options);
+    response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
   } catch {
     throw new Error(
       `Could not connect to the backend at ${API_BASE_URL}. Check that FastAPI is running.`,

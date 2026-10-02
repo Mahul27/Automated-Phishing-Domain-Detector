@@ -1,44 +1,155 @@
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import Button from "../components/Button";
 import logo from "../assets/logo.webp";
+import {
+  clearPasswordRecovery,
+  hasActivePasswordRecovery,
+  markPasswordRecoveryStarted,
+  supabase,
+} from "../utils/supabase";
+
+function getConfirmationLinkError() {
+  const hashParameters = new URLSearchParams(window.location.hash.slice(1));
+  const queryParameters = new URLSearchParams(window.location.search);
+
+  return (
+    hashParameters.get("error_description") ||
+    queryParameters.get("error_description")
+  );
+}
 
 export default function ForgotPassword() {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
+  const [checkingRecovery, setCheckingRecovery] = useState(() =>
+    hasActivePasswordRecovery(),
+  );
+  const [recoveryReady, setRecoveryReady] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const handleVerifyEmail = (e) => {
-    e.preventDefault();
-    const inputEmail = e.target.email.value;
-    const storedEmail = localStorage.getItem("userEmail");
+  useEffect(() => {
+    let componentIsMounted = true;
 
-    if (inputEmail === storedEmail) {
-      setStep(2);
+    const showNewPasswordForm = (session) => {
+      if (!componentIsMounted || !session) return;
+
+      setRecoveryReady(true);
+      setCheckingRecovery(false);
       setError("");
+    };
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") {
+        markPasswordRecoveryStarted();
+        showNewPasswordForm(session);
+      }
+
+      if (event === "SIGNED_OUT") {
+        clearPasswordRecovery();
+      }
+    });
+
+    const linkError = getConfirmationLinkError();
+
+    if (linkError) {
+      clearPasswordRecovery();
+      setError(linkError);
+      setCheckingRecovery(false);
+    } else if (hasActivePasswordRecovery()) {
+      // Supabase may process the confirmation link before React finishes
+      // loading, so also check for the temporary recovery session.
+      supabase.auth.getSession().then(({ data, error: sessionError }) => {
+        if (!componentIsMounted) return;
+
+        if (sessionError) {
+          setError(sessionError.message);
+          setCheckingRecovery(false);
+          return;
+        }
+
+        if (data.session) {
+          showNewPasswordForm(data.session);
+          return;
+        }
+
+        clearPasswordRecovery();
+        setError(
+          "This confirmation link is invalid or has expired. Please request a new email.",
+        );
+        setCheckingRecovery(false);
+      });
     } else {
-      setError("Email not found in our records.");
+      setCheckingRecovery(false);
     }
+
+    return () => {
+      componentIsMounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const handleSendConfirmationEmail = async (event) => {
+    event.preventDefault();
+    const inputEmail = event.target.email.value;
+
+    setError("");
+    setSuccess("");
+    setSending(true);
+
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+      inputEmail,
+      { redirectTo: `${window.location.origin}/forgot-password` },
+    );
+
+    if (resetError) {
+      setError(resetError.message);
+      setSending(false);
+      return;
+    }
+
+    // A generic message avoids revealing whether an account exists.
+    setSuccess(
+      "If an account exists for this email, a confirmation email has been sent. Open it and click the confirmation link to choose a new password.",
+    );
+    setSending(false);
   };
 
-  const handleResetPassword = (e) => {
-    e.preventDefault();
-    const newPassword = e.target.newPassword.value;
-    const confirmPassword = e.target.confirmPassword.value;
+  const handleResetPassword = async (event) => {
+    event.preventDefault();
+    const newPassword = event.target.newPassword.value;
+    const confirmPassword = event.target.confirmPassword.value;
+
+    setError("");
+    setSuccess("");
 
     if (newPassword !== confirmPassword) {
       setError("Passwords do not match!");
       return;
     }
 
-    localStorage.setItem("userPassword", newPassword);
-    setSuccess("Password reset successfully!");
-    setError("");
+    setSubmitting(true);
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (updateError) {
+      setError(updateError.message);
+      setSubmitting(false);
+      return;
+    }
+
+    setSuccess("Password changed successfully! Returning to login...");
+    clearPasswordRecovery();
+    await supabase.auth.signOut();
 
     setTimeout(() => {
       navigate("/");
-    }, 2000);
+    }, 1500);
   };
 
   return (
@@ -60,8 +171,15 @@ export default function ForgotPassword() {
           </section>
 
           <section className="login-section">
-            <h2 className="login-title">RESET PASSWORD</h2>
+            <h2 className="login-title">
+              {recoveryReady ? "CREATE NEW PASSWORD" : "RESET PASSWORD"}
+            </h2>
 
+            {checkingRecovery && (
+              <div style={{ marginBottom: "10px" }}>
+                Checking your confirmation link...
+              </div>
+            )}
             {error && (
               <div style={{ color: "red", marginBottom: "10px" }}>{error}</div>
             )}
@@ -71,27 +189,38 @@ export default function ForgotPassword() {
               </div>
             )}
 
-            {step === 1 ? (
-              <form onSubmit={handleVerifyEmail}>
+            {!checkingRecovery && !recoveryReady && (
+              <form onSubmit={handleSendConfirmationEmail}>
                 <div className="form-group">
                   <input
                     type="email"
                     name="email"
                     placeholder="Enter your registered email"
+                    disabled={sending}
                     required
                   />
                 </div>
-                <Button type="submit" variant="outline" fullWidth size="large">
-                  Send Code
+                <Button
+                  type="submit"
+                  variant="outline"
+                  fullWidth
+                  size="large"
+                  disabled={sending}
+                >
+                  {sending ? "Sending..." : "Send Confirmation Email"}
                 </Button>
               </form>
-            ) : (
+            )}
+
+            {recoveryReady && !success && (
               <form onSubmit={handleResetPassword}>
                 <div className="form-group">
                   <input
                     type="password"
                     name="newPassword"
                     placeholder="New Password"
+                    minLength="8"
+                    disabled={submitting}
                     required
                   />
                 </div>
@@ -100,11 +229,19 @@ export default function ForgotPassword() {
                     type="password"
                     name="confirmPassword"
                     placeholder="Confirm New Password"
+                    minLength="8"
+                    disabled={submitting}
                     required
                   />
                 </div>
-                <Button type="submit" variant="outline" fullWidth size="large">
-                  Reset Password
+                <Button
+                  type="submit"
+                  variant="outline"
+                  fullWidth
+                  size="large"
+                  disabled={submitting}
+                >
+                  {submitting ? "Resetting..." : "Reset Password"}
                 </Button>
               </form>
             )}
