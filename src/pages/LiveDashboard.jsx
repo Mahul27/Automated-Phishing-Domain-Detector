@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
-import { fetchDashboardSummary, fetchScans } from "../api/client";
+import { fetchDashboardSummary, fetchScans } from "../Services/Client";
 import Button from "../components/Button";
 import ApiState from "../components/ApiState";
 import {

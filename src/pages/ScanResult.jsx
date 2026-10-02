@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Header from "../components/Header";
 import { useParams, useNavigate } from "react-router-dom";
-import { fetchScan, updateScanReview } from "../api/client";
+import { fetchScan, updateScanReview } from "../Services/Client";
 import { getRiskColor } from "../utils/risk";
 import Button from "../components/Button";
 import ApiState from "../components/ApiState";

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../components/Header";
-import { fetchScans, createScan, uploadScanFile } from "../api/client";
+import { fetchScans, createScan, uploadScanFile } from "../Services/Client";
 import Button from "../components/Button";
 import ApiState from "../components/ApiState";
 
