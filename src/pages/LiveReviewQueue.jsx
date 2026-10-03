@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Header from "../components/Header";
-import { fetchScans } from "../Services/Client";
+import { fetchScans } from "../api/client";
 import { useNavigate } from "react-router-dom";
 import Button from "../components/Button";
 import ApiState from "../components/ApiState";
@@ -248,7 +248,7 @@ export default function LiveReviewQueue() {
                       <td
                         style={{
                           padding: "12px",
-                          color: getRiskColor(record.risk_score),
+                          color: record.prediction?.toLowerCase() === "phishing" ? "red" : record.prediction?.toLowerCase() === "legitimate" ? "green" : "inherit",
                           fontWeight: "bold",
                         }}
                       >

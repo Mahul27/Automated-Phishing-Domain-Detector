@@ -4,6 +4,7 @@ import Header from "../components/Header";
 import { fetchDashboardSummary, fetchScans } from "../api/client";
 import Button from "../components/Button";
 import ApiState from "../components/ApiState";
+import { getRiskColor } from "../utils/risk";
 import {
   ComposedChart,
   Line,
@@ -80,11 +81,21 @@ export default function LiveDashboard() {
             </div>
             <div className="metric-card">
               <h3>PENDING REVIEW</h3>
-              <div className="metric-sub">{liveRecords.filter(r => r.review_status !== "Completed").length}</div>
+              <div className="metric-sub">
+                {
+                  liveRecords.filter((r) => r.review_status !== "Completed")
+                    .length
+                }
+              </div>
             </div>
             <div className="metric-card">
               <h3>REVIEWED</h3>
-              <div className="metric-sub">{liveRecords.filter(r => r.review_status === "Completed").length}</div>
+              <div className="metric-sub">
+                {
+                  liveRecords.filter((r) => r.review_status === "Completed")
+                    .length
+                }
+              </div>
             </div>
           </section>
 
@@ -434,14 +445,23 @@ export default function LiveDashboard() {
                       style={{ borderBottom: "1px solid #eee" }}
                     >
                       <td>{alert.domain}</td>
-                      <td>{alert.risk_score}</td>
+                      <td
+                        style={{
+                          color: getRiskColor(alert.risk_score),
+                          fontWeight: "bold",
+                        }}
+                      >
+                        {alert.risk_score}
+                      </td>
                       <td
                         style={{
                           padding: "12px 8px",
                           color:
-                            alert.prediction === "Phishing"
-                              ? "#d32f2f"
-                              : "#2e7d32",
+                            alert.prediction?.toLowerCase() === "phishing"
+                              ? "red"
+                              : alert.prediction?.toLowerCase() === "legitimate"
+                                ? "green"
+                                : "inherit",
                           fontWeight: "bold",
                         }}
                       >

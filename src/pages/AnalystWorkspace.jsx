@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../components/Header";
-import { fetchScans, createScan, uploadScanFile } from "../Services/Client";
+import { fetchScans, createScan, uploadScanFile } from "../api/client";
 import Button from "../components/Button";
 import ApiState from "../components/ApiState";
 
@@ -400,12 +400,7 @@ export default function AnalystWorkspace() {
                       </td>
                       <td
                         style={{
-                          color:
-                            item.risk_score >= 75
-                              ? "red"
-                              : item.risk_score >= 40
-                                ? "orange"
-                                : "green",
+                          color: item.prediction?.toLowerCase() === "phishing" ? "red" : item.prediction?.toLowerCase() === "legitimate" ? "green" : "inherit",
                         }}
                       >
                         {item.prediction}
