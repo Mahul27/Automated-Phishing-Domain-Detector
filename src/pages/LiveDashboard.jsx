@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
-import { fetchDashboardSummary, fetchScans } from "../Services/Client";
+import { fetchDashboardSummary, fetchScans } from "../api/client";
 import Button from "../components/Button";
 import ApiState from "../components/ApiState";
 import {
@@ -80,11 +80,11 @@ export default function LiveDashboard() {
             </div>
             <div className="metric-card">
               <h3>PENDING REVIEW</h3>
-              <div className="metric-sub">{summaryData.pending_review}</div>
+              <div className="metric-sub">{liveRecords.filter(r => r.review_status !== "Completed").length}</div>
             </div>
             <div className="metric-card">
               <h3>REVIEWED</h3>
-              <div className="metric-sub">{summaryData.reviewed}</div>
+              <div className="metric-sub">{liveRecords.filter(r => r.review_status === "Completed").length}</div>
             </div>
           </section>
 
