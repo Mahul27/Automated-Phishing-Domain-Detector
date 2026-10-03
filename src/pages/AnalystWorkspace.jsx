@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../components/Header";
-import { fetchScans, createScan, uploadScanFile } from "../api/client";
+import { fetchScans, createScan, uploadScanFile } from "../Services/Client";
 import Button from "../components/Button";
 import ApiState from "../components/ApiState";
 
@@ -555,13 +555,38 @@ export default function AnalystWorkspace() {
           )}
 
           <div className="steps-box" style={{ marginTop: "20px" }}>
-            <ol>
-              <li>Validate the domain</li>
-              <li>Request analysis from backend</li>
-              <li>Extract detailed domain features</li>
-              <li>Calculate the 0-100 risk score</li>
-              <li>Open the Scan Result page</li>
-            </ol>
+            <h4 style={{ marginBottom: "10px", marginTop: "0" }}>
+              Supported Input Formats:
+            </h4>
+            <ul>
+              <li style={{ marginBottom: "5px" }}>
+                <strong>Standard domains:</strong> <code>example.com</code>
+              </li>
+              <li style={{ marginBottom: "5px" }}>
+                <strong>Subdomains:</strong> <code>login.example.com</code>
+              </li>
+              <li>
+                <strong>Full URLs:</strong>{" "}
+                <code>https://www.example.com/path</code> (Base domain extracted
+                automatically)
+              </li>
+            </ul>
+            <h4 style={{ marginTop: "15px", marginBottom: "10px" }}>
+              Formatting Rules:
+            </h4>
+            <ul>
+              <li style={{ marginBottom: "5px" }}>
+                Must include a valid top-level domain (e.g., <code>.com</code>,{" "}
+                <code>.org</code>)
+              </li>
+              <li style={{ marginBottom: "5px" }}>
+                No spaces or special characters allowed (except hyphens)
+              </li>
+              <li>
+                Paths and query parameters are automatically removed before
+                scanning
+              </li>
+            </ul>
           </div>
         </div>
       )}
@@ -579,11 +604,17 @@ export default function AnalystWorkspace() {
                 URL records at a time.
               </p>
               <p>
-                <strong>CSV:</strong> 1st row header "url", then one URL per
-                line.
-                <br />
-                <strong>JSON:</strong> Array of objects containing a "url"
-                property.
+                <strong style={{ color: "red" }}>Note:</strong>
+                <ul style={{ marginTop: "5px" }}>
+                  <li>
+                    <strong>CSV:</strong> 1st row header "url", then one URL per
+                    line.
+                  </li>
+                  <li>
+                    <strong>JSON:</strong> Array of objects containing a "url"
+                    property.
+                  </li>
+                </ul>
               </p>
               <input
                 ref={fileInputRef}

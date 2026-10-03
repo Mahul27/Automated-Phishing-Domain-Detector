@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Header from "../components/Header";
-import { fetchScans } from "../api/client";
+import { fetchScans } from "../Services/Client";
 import { useNavigate } from "react-router-dom";
 import Button from "../components/Button";
 import ApiState from "../components/ApiState";
