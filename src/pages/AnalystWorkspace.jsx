@@ -27,6 +27,12 @@ export default function AnalystWorkspace() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [sourceFilter, setSourceFilter] = useState("All");
   const [sortOption, setSortOption] = useState("Highest risk first");
+  const [currentPage, setCurrentPage] = useState(1);
+  const recordsPerPage = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, riskFilter, statusFilter, sourceFilter, sortOption]);
 
   const clearFilters = () => {
     setSearchTerm("");
@@ -188,6 +194,12 @@ export default function AnalystWorkspace() {
       (a, b) => new Date(a.scan_time || 0) - new Date(b.scan_time || 0),
     );
   }
+
+  const totalPages = Math.ceil(sortedRecords.length / recordsPerPage) || 1;
+  const currentRecords = sortedRecords.slice(
+    (currentPage - 1) * recordsPerPage,
+    currentPage * recordsPerPage,
+  );
 
   return (
     <>
@@ -388,7 +400,7 @@ export default function AnalystWorkspace() {
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedRecords.map((item) => (
+                  {currentRecords.map((item) => (
                     <tr key={item.id}>
                       <td>
                         <div style={{ fontWeight: "bold" }}>{item.domain}</div>
@@ -400,7 +412,12 @@ export default function AnalystWorkspace() {
                       </td>
                       <td
                         style={{
-                          color: item.prediction?.toLowerCase() === "phishing" ? "red" : item.prediction?.toLowerCase() === "legitimate" ? "green" : "inherit",
+                          color:
+                            item.prediction?.toLowerCase() === "phishing"
+                              ? "red"
+                              : item.prediction?.toLowerCase() === "legitimate"
+                                ? "green"
+                                : "inherit",
                         }}
                       >
                         {item.prediction}
@@ -461,6 +478,41 @@ export default function AnalystWorkspace() {
                   )}
                 </tbody>
               </table>
+
+              {sortedRecords.length > 0 && (
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginTop: "15px",
+                  }}
+                >
+                  <span style={{ fontSize: "14px", color: "gray" }}>
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <div style={{ display: "flex", gap: "10px" }}>
+                    <Button
+                      variant="outline"
+                      size="small"
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="small"
+                      onClick={() =>
+                        setCurrentPage((p) => Math.min(totalPages, p + 1))
+                      }
+                      disabled={currentPage === totalPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
