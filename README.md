@@ -1,356 +1,200 @@
-# Automated Phishing Domain Detector
+# Automated Phishing Domain Detector (APDD)
 
-**Threat Hunters | IT7510 IT Capstone Project | Trimester 2, 2026**
-
-The **Automated Phishing Domain Detector** is a cybersecurity capstone project designed to identify newly registered or unfamiliar domains that may be associated with phishing. The system combines public domain intelligence, machine learning, explainable AI, a REST API, and a web dashboard to help users review suspicious domains earlier.
-
-> **Project status:** Development in progress.
+An automated cybersecurity system designed to identify newly registered and suspicious phishing domains. The project combines machine learning (XGBoost), explainable AI (SHAP), automated feature extraction, a FastAPI backend, a MySQL database, and a React dashboard for human analyst review.
 
 ---
 
-## Project Overview
+## Implemented Features
 
-Phishing domains are often created and used very quickly. Newly registered domains may have little or no reputation history, which makes them difficult for traditional reputation-based security tools to identify early.
+### 1. Live Dashboard
+- **Overview Metrics**: Displays total scans, phishing detections, legitimate domains, and pending reviews.
+- **Charts**: Risk score distribution and detection breakdown powered by Recharts.
 
-This project aims to provide an early-warning system that collects domain information from public sources, extracts useful features, evaluates the domain using machine-learning models, and returns an understandable risk score for human review.
+### 2. Analyst Workspace
+- **Manual Domain Scan**: Scan any domain in real time.
+- **Batch Import**: Upload CSV or JSON files (up to 2 MB) to scan multiple domains at once.
+- **Personal Scan History**: Searchable and filterable table of past analyst scans.
 
-The system is designed as a **decision-support tool**. It does not automatically block, remove, or officially label a domain as phishing without human review.
+### 3. Live Review Queue
+- **Live Feed Feed**: Stream of newly identified domains from OpenSquat feeds.
+- **Filtering & Search**: Filter by prediction (Phishing / Legitimate) and review status (Pending / Completed).
+
+### 4. Detailed Scan Analysis & Human Review
+- **Risk Scoring**: Generates a 0–100 risk score and classification (Phishing vs Legitimate).
+- **Model Confidence**: Confidence percentage of the prediction.
+- **10 Extracted Features**: Full breakdown of all calculated domain attributes.
+- **Explainable AI (SHAP)**: Shows which features increased or decreased the phishing score.
+- **Analyst Decision**: Human analysts can mark a scan as **Confirmed Phishing** or **False Positive** and save notes.
+
+### 5. 10 Implemented Features Extracted per Domain
+1. **Domain Age** (days) - Extracted via live RDAP query.
+2. **Registration Period** (days) - Difference between domain expiration and creation dates (RDAP).
+3. **Domain Length** - Character count of the registrable domain name.
+4. **Hyphen Count** - Number of hyphens in the domain.
+5. **Digit Count** - Number of digits in the domain.
+6. **Shannon Entropy** - Mathematical randomness/complexity of the domain string.
+7. **Brand Keyword Detection** - Checks for known brand names (`brands_keywords.txt`).
+8. **Typosquatting Similarity** - Similarity score matching against target brand keywords.
+9. **SSL Certificate Age** (days) - Validated via live TLS/SSL handshake.
+10. **TLD** - Extracted using `tldextract`.
 
 ---
 
-## Main Objectives
+## Technologies Used
 
-- Collect newly registered and known phishing domains from public sources.
-- Extract useful lexical, registration, SSL, DNS, hosting, and NLP-based features.
-- Use machine learning to classify suspicious and legitimate domains.
-- Generate a **0-100 risk score** for each analysed domain.
-- Explain model predictions using **SHAP**.
-- Provide a web dashboard for searching, filtering, reviewing, and monitoring domain results.
-- Provide REST API endpoints for communication between the frontend, backend, database, and machine-learning components.
-- Keep a human analyst involved in the final review decision.
+Only the technologies actually implemented in the project:
 
----
+### Frontend
+- **React 19** - User interface.
+- **Vite** - Frontend build tool and development server.
+- **React Router (v7)** - Client-side page navigation.
+- **Recharts** - Charts for the dashboard.
+- **Vanilla CSS** - Application styling.
 
-## Core Features
+### Backend & Machine Learning
+- **Python 3.12** - Backend programming language.
+- **FastAPI** - REST API framework.
+- **Uvicorn** - ASGI server for FastAPI.
+- **XGBoost** - Machine learning model for phishing detection (`backend/models/final_xgboost_model.json`).
+- **SHAP** - Feature contributions and explainability for model predictions.
+- **Scikit-learn** - Data preprocessing and transformers.
+- **Pandas & NumPy** - Data processing and feature manipulation.
+- **Pydantic** - Request and response data validation.
 
-### Domain Analysis
-
-- Manual domain search and analysis.
-- Automated collection of newly registered domains from public feeds.
-- CSV/JSON domain upload for batch analysis.
-- Domain feature extraction.
-- Phishing/legitimate prediction result.
-- 0-100 phishing risk score.
-
-### Explainable AI
-
-- SHAP-based explanation for predictions.
-- Shows which extracted features contributed most strongly to a domain's risk score.
-- Helps users understand why a domain was considered suspicious or low risk.
-
-### Dashboard
-
-- React-based web interface.
-- Search and filter domain results.
-- View risk scores and prediction results.
-- View SHAP explanations.
-- View previous scan/detection history.
-- Review flagged domains before making a final decision.
-- Report/export functionality where supported by the final implementation.
+### Database & Storage
+- **MySQL** - Relational database storing scans, features, and model outputs.
+- **SQLAlchemy & PyMySQL** - Database ORM and MySQL driver.
 
 ### Authentication
+- **Supabase Auth** - User authentication (Sign up, Login, Password Reset, session management).
 
-- User authentication using Supabase.
-- Secure session handling.
-- Role-based access control where required.
-
-### Backend API
-
-- REST API built with FastAPI.
-- Domain submission and validation.
-- Feature-extraction requests.
-- Machine-learning inference.
-- Risk-score responses.
-- Database communication.
-- Error handling, logging, API documentation, and API testing.
+### Domain Tools & Feeds
+- **OpenSquat** - CLI integration for collecting newly registered suspicious domains.
+- **tldextract** - Domain suffix and TLD parsing.
+- **RDAP & SSL Sockets** - Domain registration and certificate data extraction.
 
 ---
 
-## Data Sources
+## Database Structure (MySQL)
 
-The project uses publicly available/open data sources only.
+The database schema (`database/Automated_Phishing_Domain_Detector_Schema.sql`) includes 5 tables:
 
-- **OpenSquat** - newly registered/domain-monitoring data.
-- **OpenPhish Community Feed** - known phishing URLs/domains.
-- **PhishTank** - verified phishing data.
-- **WHOIS / RDAP** - domain registration information.
-- **Certificate Transparency Logs** - SSL/TLS certificate information and newly observed domains.
-
-No confidential user information is intended to be collected or stored as part of the phishing-domain dataset.
+1. `app_users` - Stores user IDs linked to Supabase authentication.
+2. `domains` - Unique domain names and creation timestamps.
+3. `scan_results` - Scan timestamp, prediction (Phishing/Legitimate), risk score (0–100), and user link.
+4. `domain_features` - Stores the 10 extracted domain features for each scan.
+5. `model_outputs` - Stores model name, confidence score, and explanation for each scan.
 
 ---
 
-## Machine Learning
-
-### Primary Model
-
-- **XGBoost**
-
-### Comparative Models
-
-The project may compare XGBoost with:
-
-- Random Forest
-- LightGBM
-- Logistic Regression
-
-The best-performing approach will be selected based on testing and evaluation results.
-
-### Evaluation Metrics
-
-Model performance will be evaluated using:
-
-- Accuracy
-- Precision
-- Recall
-- F1-score
-- ROC-AUC
-- False-positive rate
-
-The project proposal targets **at least 90% precision** and aims to keep the **false-positive rate below 2%** at the selected operating threshold.
-
----
-
-## Feature Engineering
-
-The project plans to use a selected set of approximately **10 domain-related features**. These may include information from:
-
-- Domain length and lexical structure
-- Numbers and special characters
-- Subdomain patterns
-- Suspicious or brand-related words
-- Domain entropy/patterns
-- Top-level domain information
-- WHOIS/RDAP registration information
-- Domain age
-- SSL/TLS certificate information
-- DNS, IP, and hosting-related information
-
-The final feature set may be adjusted during model testing based on data availability and model performance.
-
----
-
-## High-Level Architecture
+## Project Structure
 
 ```text
-Public Domain Sources
-        |
-        v
-Data Collection
-(OpenSquat / OpenPhish / PhishTank / CT Logs / WHOIS-RDAP)
-        |
-        v
-Data Cleaning + Feature Extraction
-        |
-        v
-Machine Learning Model
-(XGBoost + comparative models)
-        |
-        +----> SHAP Explainability
-        |
-        v
-FastAPI REST Backend
-        |
-        +----> MySQL Database
-        |
-        +----> Supabase Authentication
-        |
-        v
-React Web Dashboard
-        |
-        v
-Human Review / Final Decision
+Automated-Phishing-Domain-Detector/
+├── backend/
+│   ├── data/                 # Brand keyword lists and feature cache
+│   ├── models/               # Trained XGBoost model (final_xgboost_model.json)
+│   ├── scripts/              # Script to refresh live OpenSquat domains
+│   ├── services/             # Feature engineering, ML prediction, OpenSquat, DB logic
+│   ├── tests/                # Backend unit tests
+│   ├── config.py             # Configuration and environment loader
+│   ├── database.py           # MySQL SQLAlchemy connection
+│   └── main.py               # FastAPI application endpoints
+├── database/
+│   └── Automated_Phishing_Domain_Detector_Schema.sql  # MySQL schema
+├── src/
+│   ├── components/           # Reusable UI components (Sidebar, Layout, ProtectedRoute, etc.)
+│   ├── pages/                # Pages (Dashboard, Workspace, Queue, ScanResult, Login, Signup)
+│   ├── Services/             # API client connecting frontend to FastAPI
+│   ├── utils/                # Supabase client helper
+│   ├── App.jsx               # Routes and app structure
+│   └── main.jsx              # React root entry
+├── package.json              # Frontend dependencies and npm scripts
+├── requirements.txt          # Python dependencies
+└── README.md
 ```
 
 ---
 
-## Technology Stack
+## Setup & Running the Project
 
-| Area                    | Technology                                                                 |
-| ----------------------- | -------------------------------------------------------------------------- |
-| Frontend                | React.js                                                                   |
-| Backend                 | Python, FastAPI                                                            |
-| Database                | MySQL                                                                      |
-| Authentication          | Supabase                                                                   |
-| Primary ML Model        | XGBoost                                                                    |
-| Comparative ML Models   | Random Forest, LightGBM, Logistic Regression                               |
-| ML Libraries            | scikit-learn                                                               |
-| Explainable AI          | SHAP                                                                       |
-| NLP                     | spaCy or equivalent NLP library                                            |
-| Data Sources            | OpenSquat, OpenPhish, PhishTank, WHOIS/RDAP, Certificate Transparency Logs |
-| API Testing             | Postman                                                                    |
-| Version Control         | Git, GitHub                                                                |
-| Project Management      | Jira - Agile Kanban                                                        |
-| Development Environment | Visual Studio Code                                                         |
+### Prerequisites
+- Python 3.12+
+- Node.js (v18+) and npm
+- MySQL Server
 
 ---
 
-## Project Scope
-
-### In Scope
-
-- Public phishing and legitimate-domain data collection.
-- Newly registered domain monitoring.
-- Domain feature extraction and preprocessing.
-- Machine-learning model training and evaluation.
-- Risk scoring.
-- SHAP explainability.
-- REST API development.
-- React web dashboard.
-- MySQL storage.
-- Supabase authentication.
-- Manual and batch domain analysis.
-- Human-in-the-loop review.
-- Unit, integration, API, system, and user-acceptance testing.
-- Technical, deployment, and user documentation.
-
-### Out of Scope
-
-- Automatic blocking or takedown of malicious domains.
-- Detection of phishing emails or malicious attachments.
-- Malware detection.
-- Mobile applications.
-- Commercial threat-intelligence subscriptions.
-- Integration with commercial SIEM/SOAR platforms.
-- Collection or storage of confidential user information.
-- Production deployment into a live enterprise environment.
-- Continuous model retraining after the capstone project is completed.
-
----
-
-## Team - Threat Hunters
-
-| Team Member           | Primary Role                                                     |
-| --------------------- | ---------------------------------------------------------------- |
-| Mahul Patel           | Project Manager, Dataset Researcher & Machine Learning Developer |
-| Kartar Singh Johal    | Backend & API Developer                                          |
-| Bhupinder Singh       | Frontend Developer, UI/UX Designer & Software Tester             |
-| Jaskaran Singh Sandhu | Database Support Developer & Software Tester                     |
-
-### Shared Responsibilities
-
-All team members contribute to:
-
-- Research
-- Documentation
-- Git/GitHub collaboration
-- System integration
-- Testing and bug fixing
-- Client/advisor feedback
-- Final demonstration and presentation
-
----
-
-## Development Methodology
-
-The project uses an **Agile Kanban** approach.
-
-Typical Jira workflow:
-
-```text
-To Do -> In Progress -> Review/Testing -> Done
-```
-
-Kanban was selected because the project includes experimental work such as dataset preparation, feature engineering, machine-learning evaluation, and system integration. Tasks can be reprioritised when technical findings or feedback require changes.
-
----
-
-## Development Plan
-
-The project is being developed incrementally so that individual components can be tested before full integration.
-
-1. Requirements and project planning
-2. Development environment setup
-3. Data collection
-4. Data cleaning and feature engineering
-5. Machine-learning model development
-6. Backend API development
-7. Database and authentication development
-8. Frontend dashboard development
-9. System integration
-10. Testing and bug fixing
-11. Model/performance improvements
-12. Documentation and final presentation
-
----
-
-## Local Development
-
-The project is currently under active development. Detailed installation commands will be updated once the initial frontend, backend, database, and machine-learning project structure is finalised in the repository.
-
-Expected development requirements include:
-
-- Git
-- Python
-- Node.js and npm
-- MySQL Community Edition
-- Supabase account/project for authentication
-- Visual Studio Code or another IDE
-- Postman for API testing
-
-### Clone the Repository
-
+### 1. Database Setup
+Run the SQL schema in MySQL:
 ```bash
-git clone <repository-url>
-cd <project-folder>
+mysql -u <username> -p < database/Automated_Phishing_Domain_Detector_Schema.sql
 ```
 
-Additional frontend, backend, database, environment-variable, and model setup instructions will be added as development progresses.
+---
+
+### 2. Backend Setup
+1. Open the project directory:
+   ```bash
+   cd Automated-Phishing-Domain-Detector
+   ```
+2. Create and activate a virtual environment:
+   ```bash
+   python3.12 -m venv .venv
+   source .venv/bin/activate   # On Windows: .venv\Scripts\activate
+   ```
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. Configure backend environment in `backend/.env`:
+   ```env
+   DB_HOST=localhost
+   DB_PORT=3306
+   DB_USER=your_mysql_user
+   DB_PASSWORD=your_mysql_password
+   DB_NAME=automated_phishing_detector
+   ```
+5. Start the backend:
+   ```bash
+   npm run backend
+   # or: .venv/bin/python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
+   ```
+   API will run at: `http://127.0.0.1:8000` (docs at `http://127.0.0.1:8000/docs`).
 
 ---
 
-## Testing Strategy
-
-Testing will include:
-
-- Unit testing
-- Backend/API testing
-- Integration testing
-- Frontend functional testing
-- Database/data-integrity testing
-- Model performance testing
-- Regression testing
-- Usability testing
-- User acceptance testing
-
-Special attention will be given to **false positives**, **false negatives**, prediction quality, API integration, and the reliability of the final demonstration.
-
----
-
-## Security and Privacy
-
-- Only publicly available/open domain information is intended to be used for domain analysis.
-- The application will not automatically block or take down domains.
-- Final decisions remain with a human reviewer.
-- Authentication is separated from the primary project database through Supabase.
-- Secrets, API keys, database credentials, and environment variables must **never be committed to GitHub**.
-
-Recommended files such as `.env` should be included in `.gitignore`.
+### 3. Frontend Setup
+1. In the project root, configure `.env.local`:
+   ```env
+   VITE_API_BASE_URL=http://127.0.0.1:8000
+   VITE_SUPABASE_URL=your_supabase_url
+   VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_key
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the Vite development server:
+   ```bash
+   npm run dev
+   ```
+   Frontend will run at: `http://localhost:5173`.
 
 ---
 
-## Academic Context
-
-This repository is being developed for **IT7510 IT Capstone Project**, a Level 7, 45-credit capstone course at Whitireia and WelTec during Trimester 2, 2026.
-
-The project demonstrates research, analysis, design, development, testing, project management, documentation, teamwork, and presentation skills in an industry-focused IT project.
+### 4. Fetching Live Domains (OpenSquat)
+To pull and scan newly registered domains into the live review queue:
+```bash
+npm run domains:refresh
+# or: .venv/bin/python -m backend.scripts.refresh_live
+```
 
 ---
 
-## Current Status
+## Project Team (Threat Hunters)
 
-**Development in progress.**
-
-The project has moved from proposal/planning into development, including environment setup, data-source work, machine-learning preparation, backend development, frontend development, database work, authentication, and integration planning.
-
-This README will be updated as the system architecture and implementation are completed.
+- **Mahul Patel** - Project Manager & Machine Learning Developer
+- **Kartar Singh Johal** - Backend & API Developer
+- **Bhupinder Singh** - Frontend Developer & UI/UX Designer
+- **Jaskaran Singh Sandhu** - Database Support Developer
