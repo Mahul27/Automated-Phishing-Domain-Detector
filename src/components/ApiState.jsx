@@ -11,7 +11,9 @@ export default function ApiState({ loading, error, onRetry }) {
         borderColor: error ? "#dc2626" : "#cbd5e1",
       }}
     >
-      {loading && <p style={{ margin: 0 }}>Loading records from the backend...</p>}
+      {loading && (
+        <p style={{ margin: 0 }}>Loading records from the backend...</p>
+      )}
       {error && (
         <>
           <p style={{ color: "#b91c1c", marginTop: 0 }}>{error}</p>

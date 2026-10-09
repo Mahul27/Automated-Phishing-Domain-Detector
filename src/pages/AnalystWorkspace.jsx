@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../components/Header";
-import { fetchScans, createScan, uploadScanFile } from "../api/client";
+import { fetchScans, createScan, uploadScanFile } from "../Services/Client";
 import Button from "../components/Button";
 import ApiState from "../components/ApiState";
 
@@ -27,6 +27,12 @@ export default function AnalystWorkspace() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [sourceFilter, setSourceFilter] = useState("All");
   const [sortOption, setSortOption] = useState("Highest risk first");
+  const [currentPage, setCurrentPage] = useState(1);
+  const recordsPerPage = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, riskFilter, statusFilter, sourceFilter, sortOption]);
 
   const clearFilters = () => {
     setSearchTerm("");
@@ -188,6 +194,12 @@ export default function AnalystWorkspace() {
       (a, b) => new Date(a.scan_time || 0) - new Date(b.scan_time || 0),
     );
   }
+
+  const totalPages = Math.ceil(sortedRecords.length / recordsPerPage) || 1;
+  const currentRecords = sortedRecords.slice(
+    (currentPage - 1) * recordsPerPage,
+    currentPage * recordsPerPage,
+  );
 
   return (
     <>
@@ -388,7 +400,7 @@ export default function AnalystWorkspace() {
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedRecords.map((item) => (
+                  {currentRecords.map((item) => (
                     <tr key={item.id}>
                       <td>
                         <div style={{ fontWeight: "bold" }}>{item.domain}</div>
@@ -401,11 +413,11 @@ export default function AnalystWorkspace() {
                       <td
                         style={{
                           color:
-                            item.risk_score >= 75
+                            item.prediction?.toLowerCase() === "phishing"
                               ? "red"
-                              : item.risk_score >= 40
-                                ? "orange"
-                                : "green",
+                              : item.prediction?.toLowerCase() === "legitimate"
+                                ? "green"
+                                : "inherit",
                         }}
                       >
                         {item.prediction}
@@ -466,6 +478,41 @@ export default function AnalystWorkspace() {
                   )}
                 </tbody>
               </table>
+
+              {sortedRecords.length > 0 && (
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginTop: "15px",
+                  }}
+                >
+                  <span style={{ fontSize: "14px", color: "gray" }}>
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <div style={{ display: "flex", gap: "10px" }}>
+                    <Button
+                      variant="outline"
+                      size="small"
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="small"
+                      onClick={() =>
+                        setCurrentPage((p) => Math.min(totalPages, p + 1))
+                      }
+                      disabled={currentPage === totalPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -508,13 +555,38 @@ export default function AnalystWorkspace() {
           )}
 
           <div className="steps-box" style={{ marginTop: "20px" }}>
-            <ol>
-              <li>Validate the domain</li>
-              <li>Request analysis from backend</li>
-              <li>Extract detailed domain features</li>
-              <li>Calculate the 0-100 risk score</li>
-              <li>Open the Scan Result page</li>
-            </ol>
+            <h4 style={{ marginBottom: "10px", marginTop: "0" }}>
+              Supported Input Formats:
+            </h4>
+            <ul>
+              <li style={{ marginBottom: "5px" }}>
+                <strong>Standard domains:</strong> <code>example.com</code>
+              </li>
+              <li style={{ marginBottom: "5px" }}>
+                <strong>Subdomains:</strong> <code>login.example.com</code>
+              </li>
+              <li>
+                <strong>Full URLs:</strong>{" "}
+                <code>https://www.example.com/path</code> (Base domain extracted
+                automatically)
+              </li>
+            </ul>
+            <h4 style={{ marginTop: "15px", marginBottom: "10px" }}>
+              Formatting Rules:
+            </h4>
+            <ul>
+              <li style={{ marginBottom: "5px" }}>
+                Must include a valid top-level domain (e.g., <code>.com</code>,{" "}
+                <code>.org</code>)
+              </li>
+              <li style={{ marginBottom: "5px" }}>
+                No spaces or special characters allowed (except hyphens)
+              </li>
+              <li>
+                Paths and query parameters are automatically removed before
+                scanning
+              </li>
+            </ul>
           </div>
         </div>
       )}
@@ -532,11 +604,17 @@ export default function AnalystWorkspace() {
                 URL records at a time.
               </p>
               <p>
-                <strong>CSV:</strong> 1st row header "url", then one URL per
-                line.
-                <br />
-                <strong>JSON:</strong> Array of objects containing a "url"
-                property.
+                <strong style={{ color: "red" }}>Note:</strong>
+                <ul style={{ marginTop: "5px" }}>
+                  <li>
+                    <strong>CSV:</strong> 1st row header "url", then one URL per
+                    line.
+                  </li>
+                  <li>
+                    <strong>JSON:</strong> Array of objects containing a "url"
+                    property.
+                  </li>
+                </ul>
               </p>
               <input
                 ref={fileInputRef}
