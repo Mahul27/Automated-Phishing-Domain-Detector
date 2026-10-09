@@ -143,11 +143,16 @@ export default function AnalystWorkspace() {
   };
 
   const filteredRecords = personalRecords.filter((r) => {
+    const cleanSearch = searchTerm.trim().toLowerCase();
+
+    const domainText = (r.domain || "").toLowerCase();
+    const originalText = (r.original || "").toLowerCase();
+    const idText = (r.id || "").toString().toLowerCase();
+
     const matchesSearch =
-      r.domain.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (r.original &&
-        r.original.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      r.id.toString().includes(searchTerm);
+      domainText.includes(cleanSearch) ||
+      originalText.includes(cleanSearch) ||
+      idText.includes(cleanSearch);
 
     let matchesRisk = true;
     if (riskFilter === "High") {

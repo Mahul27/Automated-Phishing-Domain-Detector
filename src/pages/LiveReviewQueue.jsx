@@ -43,9 +43,13 @@ export default function LiveReviewQueue() {
   };
 
   const filteredData = liveRecords.filter((record) => {
-    const matchesSearch = record.domain
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase());
+    const cleanSearch = searchTerm.trim().toLowerCase();
+
+    const domainText = (record.domain || "").toLowerCase();
+    const idText = (record.id || "").toString().toLowerCase();
+
+    const matchesSearch =
+      domainText.includes(cleanSearch) || idText.includes(cleanSearch);
 
     let matchesRisk = true;
     if (riskFilter !== "All") {
@@ -248,7 +252,13 @@ export default function LiveReviewQueue() {
                       <td
                         style={{
                           padding: "12px",
-                          color: record.prediction?.toLowerCase() === "phishing" ? "red" : record.prediction?.toLowerCase() === "legitimate" ? "green" : "inherit",
+                          color:
+                            record.prediction?.toLowerCase() === "phishing"
+                              ? "red"
+                              : record.prediction?.toLowerCase() ===
+                                  "legitimate"
+                                ? "green"
+                                : "inherit",
                           fontWeight: "bold",
                         }}
                       >
