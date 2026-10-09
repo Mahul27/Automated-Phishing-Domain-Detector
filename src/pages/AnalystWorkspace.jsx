@@ -599,23 +599,7 @@ export default function AnalystWorkspace() {
           {!fileData ? (
             <>
               <h2>Choose a CSV or JSON file</h2>
-              <p>
-                Files are uploaded to the backend. This demo accepts up to 1,000
-                URL records at a time.
-              </p>
-              <p>
-                <strong style={{ color: "red" }}>Note:</strong>
-                <ul style={{ marginTop: "5px" }}>
-                  <li>
-                    <strong>CSV:</strong> 1st row header "url", then one URL per
-                    line.
-                  </li>
-                  <li>
-                    <strong>JSON:</strong> Array of objects containing a "url"
-                    property.
-                  </li>
-                </ul>
-              </p>
+              <p>Upload a File. accepts up to 100 domain records at a time.</p>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -631,6 +615,40 @@ export default function AnalystWorkspace() {
               >
                 {uploading ? "UPLOADING..." : "BROWSE FILES"}
               </Button>
+
+              <div className="steps-box" style={{ marginTop: "20px" }}>
+                <h4 style={{ marginBottom: "10px", marginTop: "0" }}>
+                  Supported Input Formats:
+                </h4>
+                <ul>
+                  <li style={{ marginBottom: "5px" }}>
+                    <strong>CSV:</strong> 1st row header <code>domain</code>,
+                    then one domain or URL per line.
+                  </li>
+                  <li>
+                    <strong>JSON:</strong> Array of objects containing a{" "}
+                    <code>"domain"</code> property (or array of domain strings).
+                  </li>
+                </ul>
+                <h4 style={{ marginTop: "15px", marginBottom: "10px" }}>
+                  Formatting Rules:
+                </h4>
+                <ul>
+                  <li style={{ marginBottom: "5px" }}>
+                    Must include a valid top-level domain (e.g.,{" "}
+                    <code>.com</code>, <code>.org</code>)
+                  </li>
+                  <li style={{ marginBottom: "5px" }}>
+                    Full URLs are accepted (e.g.,{" "}
+                    <code>https://example.com/path</code>) — base domain is
+                    extracted automatically
+                  </li>
+                  <li style={{ marginBottom: "5px" }}>
+                    No spaces or special characters allowed (except hyphens)
+                  </li>
+                  <li>Max file size 2 MB and up to 100 records per upload</li>
+                </ul>
+              </div>
             </>
           ) : (
             <div className="state-box">
