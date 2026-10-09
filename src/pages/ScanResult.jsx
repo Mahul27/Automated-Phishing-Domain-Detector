@@ -152,7 +152,12 @@ export default function ScanResult() {
             <strong>Prediction:</strong>{" "}
             <span
               style={{
-                color: record.prediction?.toLowerCase() === "phishing" ? "red" : record.prediction?.toLowerCase() === "legitimate" ? "green" : "inherit",
+                color:
+                  record.prediction?.toLowerCase() === "phishing"
+                    ? "red"
+                    : record.prediction?.toLowerCase() === "legitimate"
+                      ? "green"
+                      : "inherit",
                 fontWeight: "bold",
               }}
             >
