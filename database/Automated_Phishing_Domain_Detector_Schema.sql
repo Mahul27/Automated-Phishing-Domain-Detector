@@ -65,6 +65,12 @@ CREATE TABLE IF NOT EXISTS scan_results (
 -- Store the risk score
 risk_score DECIMAL(5,2) NOT NULL,
 
+-- Analyst review information
+review_status VARCHAR(20) NOT NULL DEFAULT 'Pending',
+analyst_decision VARCHAR(30) NULL,
+analyst_note TEXT NULL,
+reviewed_at TIMESTAMP NULL DEFAULT NULL,
+
 -- CONNECT the scan to the app_users
    FOREIGN KEY (user_id)
    REFERENCES app_users(user_id),
