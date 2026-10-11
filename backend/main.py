@@ -1,4 +1,5 @@
-from datetime import datetime, timezone
+
+from datetime import datetime
 
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,10 +20,7 @@ from backend.services.scan_service import (
 from backend.services.import_service import parse_imported_domains
 
 
-app = FastAPI(
-    title="Threat Hunter API",
-    version="1.0.0",
-)
+app = FastAPI(title="Threat Hunter API", version="1.0.0")
 
 
 # ============================================================
@@ -43,51 +41,70 @@ app.add_middleware(
 
 
 # ============================================================
-# AUTHENTICATED USER MAPPING
+# SUPABASE USER TO MYSQL USER MAPPING
 # ============================================================
 
 def get_mysql_user_id(db: Session, current_user: CurrentUser) -> int:
-    """Resolve the authenticated Supabase UUID to an app_users.user_id."""
     result = db.execute(
-        text("SELECT user_id FROM app_users WHERE supabase_user_id = :supabase_id"),
+        text("""
+            SELECT user_id
+            FROM app_users
+            WHERE supabase_user_id = :supabase_id
+        """),
         {"supabase_id": current_user.id},
     ).first()
+
     if result:
         return int(result[0])
 
-    # Create a mapping for a genuine authenticated Supabase account.
-    # This requires INSERT permission on app_users.
     try:
         db.execute(
-            text("INSERT INTO app_users (supabase_user_id) VALUES (:supabase_id)"),
+            text("""
+                INSERT INTO app_users (supabase_user_id)
+                VALUES (:supabase_id)
+            """),
             {"supabase_id": current_user.id},
         )
         db.commit()
     except Exception:
         db.rollback()
-        # A concurrent request may have inserted the mapping; check again.
+
         result = db.execute(
-            text("SELECT user_id FROM app_users WHERE supabase_user_id = :supabase_id"),
+            text("""
+                SELECT user_id
+                FROM app_users
+                WHERE supabase_user_id = :supabase_id
+            """),
             {"supabase_id": current_user.id},
         ).first()
+
         if not result:
             raise HTTPException(
                 status_code=403,
-                detail="Your Supabase account is not mapped to a MySQL user. Contact the project administrator.",
+                detail=(
+                    "Your Supabase account is not mapped to a MySQL user. "
+                    "Contact the project administrator."
+                ),
             )
+
         return int(result[0])
 
     result = db.execute(
-        text("SELECT user_id FROM app_users WHERE supabase_user_id = :supabase_id"),
+        text("""
+            SELECT user_id
+            FROM app_users
+            WHERE supabase_user_id = :supabase_id
+        """),
         {"supabase_id": current_user.id},
     ).first()
-    if not result:
-        raise HTTPException(status_code=500, detail="Could not map your account to MySQL.")
-    return int(result[0])
 
-# Temporary in-memory review storage because the current
-# MySQL schema does not contain review fields.
-REVIEWS = {}
+    if not result:
+        raise HTTPException(
+            status_code=500,
+            detail="Could not map your account to MySQL.",
+        )
+
+    return int(result[0])
 
 
 # ============================================================
@@ -113,31 +130,21 @@ def startup():
 
 
 # ============================================================
-# ROOT
+# ROOT AND HEALTH
 # ============================================================
 
 @app.get("/")
 def root():
-    return {
-        "message": "Threat Hunter API is running"
-    }
+    return {"message": "Threat Hunter API is running"}
 
-
-# ============================================================
-# HEALTH
-# ============================================================
 
 @app.get("/health")
 @app.get("/api/v1/health")
 def health():
-    model = model_status()
-
     return {
         "status": "healthy",
-        "model": model,
-        "opensquat": {
-            "status": "enabled",
-        },
+        "model": model_status(),
+        "opensquat": {"status": "enabled"},
     }
 
 
@@ -153,6 +160,7 @@ def create_scan(
 ):
     try:
         mysql_user_id = get_mysql_user_id(db, current_user)
+
         scan = scan_domain(
             db,
             request.domain,
@@ -160,17 +168,12 @@ def create_scan(
             mysql_user_id,
         )
 
-        return scan_response(
-            scan,
-            "personal",
-        )
+        return scan_response(scan, "personal")
 
     except HTTPException:
         raise
-
     except Exception as error:
         db.rollback()
-
         raise HTTPException(
             status_code=500,
             detail=f"Scan failed: {error}",
@@ -178,7 +181,7 @@ def create_scan(
 
 
 # ============================================================
-# GET SCANS
+# QUERY SCANS
 # ============================================================
 
 def _rows(
@@ -188,20 +191,22 @@ def _rows(
 ):
     if collection == "live":
         user_filter = "sr.user_id IS NULL"
-
+        params = {}
     elif collection == "personal":
         if mysql_user_id is None:
-            raise HTTPException(status_code=401, detail="Sign in to view personal scans.")
+            raise HTTPException(
+                status_code=401,
+                detail="Sign in to view personal scans.",
+            )
         user_filter = "sr.user_id = :mysql_user_id"
-
+        params = {"mysql_user_id": mysql_user_id}
     else:
         raise HTTPException(
             status_code=400,
             detail="Collection must be live or personal.",
         )
 
-    query = text(
-        f"""
+    query = text(f"""
         SELECT
             sr.scan_id,
             sr.user_id,
@@ -209,8 +214,11 @@ def _rows(
             sr.scan_time,
             sr.prediction_result,
             sr.risk_score,
+            sr.review_status,
+            sr.analyst_decision,
+            sr.analyst_note,
+            sr.reviewed_at,
             d.domain_name,
-
             df.domain_age,
             df.registration_period,
             df.domain_length,
@@ -221,22 +229,15 @@ def _rows(
             df.typosquatting_similarity,
             df.ssl_certificate_age,
             df.tld
-
         FROM scan_results sr
-
         INNER JOIN domains d
             ON sr.domain_id = d.domain_id
-
         LEFT JOIN domain_features df
             ON sr.scan_id = df.scan_id
-
         WHERE {user_filter}
-
         ORDER BY sr.scan_time DESC
-        """
-    )
+    """)
 
-    params = {"mysql_user_id": mysql_user_id} if collection == "personal" else {}
     return db.execute(query, params).mappings().all()
 
 
@@ -244,80 +245,48 @@ def _rows(
 def get_scans(
     collection: str = "live",
     db: Session = Depends(get_db),
-    current_user: CurrentUser | None = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
 ):
     mysql_user_id = (
         get_mysql_user_id(db, current_user)
-        if collection == "personal" and current_user is not None
+        if collection == "personal"
         else None
     )
-    rows = _rows(db, collection, mysql_user_id)
 
+    rows = _rows(db, collection, mysql_user_id)
     records = []
 
     for row in rows:
-
-        scan_id = row["scan_id"]
-
-        review = REVIEWS.get(
-            scan_id,
-            {},
-        )
-
-        risk_score = float(
-            row["risk_score"] or 0
-        )
-
-        prediction = row["prediction_result"]
-
-        if prediction is None:
-            prediction = "Legitimate"
-
-        prediction = str(
-            prediction
-        )
-
         domain = row["domain_name"] or ""
-
         tld = row["tld"]
 
         if not tld and "." in domain:
-            tld = "." + domain.rsplit(
-                ".",
-                1,
-            )[1]
+            tld = "." + domain.rsplit(".", 1)[1]
 
-        records.append(
-            {
-                "id": scan_id,
-                "domain": domain,
-                "risk_score": risk_score,
-                "prediction": prediction,
-                "review_status": review.get(
-                    "review_status",
-                    "Pending",
-                ),
-                "decision": review.get(
-                    "decision"
-                ),
-                "scan_time": (
-                    row["scan_time"].isoformat()
-                    if row["scan_time"]
-                    else None
-                ),
-                "tld": tld,
-                "source": (
-                    "manual"
-                    if collection == "personal"
-                    else "live"
-                ),
-                "original": domain,
-            }
-        )
+        records.append({
+            "id": row["scan_id"],
+            "domain": domain,
+            "risk_score": float(row["risk_score"] or 0),
+            "prediction": row["prediction_result"] or "Legitimate",
+            "review_status": row["review_status"] or "Pending",
+            "decision": row["analyst_decision"],
+            "note": row["analyst_note"],
+            "review_date": (
+                row["reviewed_at"].isoformat()
+                if row["reviewed_at"]
+                else None
+            ),
+            "scan_time": (
+                row["scan_time"].isoformat()
+                if row["scan_time"]
+                else None
+            ),
+            "tld": tld,
+            "source": "manual" if collection == "personal" else "live",
+            "original": domain,
+        })
 
-    return {
-        "records": records
-    }
+    return {"records": records}
 
 
 # ============================================================
@@ -330,8 +299,7 @@ def get_scan(
     db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
 ):
-    query = text(
-        """
+    query = text("""
         SELECT
             sr.scan_id,
             sr.user_id,
@@ -339,8 +307,11 @@ def get_scan(
             sr.scan_time,
             sr.prediction_result,
             sr.risk_score,
+            sr.review_status,
+            sr.analyst_decision,
+            sr.analyst_note,
+            sr.reviewed_at,
             d.domain_name,
-
             df.domain_age,
             df.registration_period,
             df.domain_length,
@@ -351,136 +322,82 @@ def get_scan(
             df.typosquatting_similarity,
             df.ssl_certificate_age,
             df.tld,
-
             mo.model_name,
             mo.confidence_score,
             mo.explanation
-
         FROM scan_results sr
-
         INNER JOIN domains d
             ON sr.domain_id = d.domain_id
-
         LEFT JOIN domain_features df
             ON sr.scan_id = df.scan_id
-
         LEFT JOIN model_outputs mo
             ON sr.scan_id = mo.scan_id
-
         WHERE sr.scan_id = :scan_id
-
         ORDER BY mo.output_id DESC
-
         LIMIT 1
-        """
-    )
+    """)
 
     row = db.execute(
         query,
-        {
-            "scan_id": scan_id
-        },
+        {"scan_id": scan_id},
     ).mappings().first()
 
     if row is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Scan not found.",
-        )
-
-    mysql_user_id = get_mysql_user_id(db, current_user)
-    if row["user_id"] is not None and int(row["user_id"]) != mysql_user_id:
         raise HTTPException(status_code=404, detail="Scan not found.")
 
-    review = REVIEWS.get(
-        scan_id,
-        {},
-    )
+    mysql_user_id = get_mysql_user_id(db, current_user)
 
+    if (
+        row["user_id"] is not None
+        and int(row["user_id"]) != mysql_user_id
+    ):
+        raise HTTPException(status_code=404, detail="Scan not found.")
+
+    # Review fields come from MySQL, not an in-memory dictionary.
     result = {
         "id": row["scan_id"],
         "domain": row["domain_name"],
-        "risk_score": float(
-            row["risk_score"] or 0
-        ),
+        "risk_score": float(row["risk_score"] or 0),
         "prediction": row["prediction_result"],
-        "review_status": review.get(
-            "review_status",
-            "Pending",
-        ),
-        "decision": review.get(
-            "decision"
-        ),
-        "note": review.get(
-            "note"
+        "review_status": row["review_status"] or "Pending",
+        "decision": row["analyst_decision"],
+        "note": row["analyst_note"],
+        "review_date": (
+            row["reviewed_at"].isoformat()
+            if row["reviewed_at"]
+            else None
         ),
         "scan_time": (
             row["scan_time"].isoformat()
             if row["scan_time"]
             else None
         ),
-        "source": (
-            "manual"
-            if row["user_id"] is not None
-            else "live"
-        ),
+        "source": "manual" if row["user_id"] is not None else "live",
         "original": row["domain_name"],
-
-        # Features
         "domain_age": row["domain_age"],
-        "registration_period": row[
-            "registration_period"
-        ],
-        "domain_length": row[
-            "domain_length"
-        ],
-        "hyphens": row[
-            "hyphen_count"
-        ],
-        "digits": row[
-            "digit_count"
-        ],
-        "shannon_entropy": row[
-            "shannon_entropy"
-        ],
-        "brand_keyword": row[
-            "brand_keyword_detection"
-        ],
-        "typosquatting_similarity": row[
-            "typosquatting_similarity"
-        ],
-        "ssl_cert_age": row[
-            "ssl_certificate_age"
-        ],
-        "tld": row[
-            "tld"
-        ],
-
-        # Model
-        "model_name": row[
-            "model_name"
-        ] or "XGBoost",
-
+        "registration_period": row["registration_period"],
+        "domain_length": row["domain_length"],
+        "hyphens": row["hyphen_count"],
+        "digits": row["digit_count"],
+        "shannon_entropy": row["shannon_entropy"],
+        "brand_keyword": row["brand_keyword_detection"],
+        "typosquatting_similarity": row["typosquatting_similarity"],
+        "ssl_cert_age": row["ssl_certificate_age"],
+        "tld": row["tld"],
+        "model_name": row["model_name"] or "XGBoost",
         "confidence_score": (
-            float(
-                row["confidence_score"]
-            )
+            float(row["confidence_score"])
             if row["confidence_score"] is not None
-            else float(
-                row["risk_score"] or 0
-            ) / 100
+            else float(row["risk_score"] or 0) / 100
         ),
-
-        "explanation": row[
-            "explanation"
-        ],
+        "explanation": row["explanation"],
     }
 
     return result
 
 
 # ============================================================
-# REVIEW
+# SAVE REVIEW TO MYSQL
 # ============================================================
 
 @app.patch("/api/v1/scans/{scan_id}/review")
@@ -496,42 +413,54 @@ def save_review(
     }:
         raise HTTPException(
             status_code=400,
-            detail=(
-                "Choose Confirmed Phishing "
-                "or False Positive."
-            ),
+            detail="Choose Confirmed Phishing or False Positive.",
         )
 
     mysql_user_id = get_mysql_user_id(db, current_user)
-    exists = db.execute(
-        text("SELECT scan_id, user_id FROM scan_results WHERE scan_id = :scan_id"),
-        {"scan_id": scan_id},
-    ).first()
 
-    if exists is not None and exists[1] is not None and int(exists[1]) != mysql_user_id:
-        raise HTTPException(status_code=404, detail="Scan not found.")
-
-    if exists is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Scan not found.",
+    try:
+        result = db.execute(
+            text("""
+                UPDATE scan_results
+                SET review_status = 'Completed',
+                    analyst_decision = :decision,
+                    analyst_note = :note,
+                    reviewed_at = CURRENT_TIMESTAMP
+                WHERE scan_id = :scan_id
+                  AND (user_id = :user_id OR user_id IS NULL)
+            """),
+            {
+                "decision": review.decision,
+                "note": review.note,
+                "scan_id": scan_id,
+                "user_id": mysql_user_id,
+            },
         )
 
-    REVIEWS[scan_id] = {
-        "review_status": "Completed",
-        "decision": review.decision,
-        "note": review.note,
-        "review_date": datetime.now(
-            timezone.utc
-        ).isoformat(),
-    }
+        if result.rowcount == 0:
+            db.rollback()
+            raise HTTPException(
+                status_code=404,
+                detail="Scan not found or not available for review.",
+            )
 
-    return {
-        "id": scan_id,
-        "review_status": "Completed",
-        "decision": review.decision,
-        "note": review.note,
-    }
+        db.commit()
+
+        return {
+            "id": scan_id,
+            "review_status": "Completed",
+            "decision": review.decision,
+            "note": review.note,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as error:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Could not save review: {error}",
+        )
 
 
 # ============================================================
@@ -539,22 +468,31 @@ def save_review(
 # ============================================================
 
 @app.get("/api/v1/dashboard/summary")
-def dashboard_summary(
-    db: Session = Depends(get_db),
-):
-    rows = _rows(
-        db,
-        "live",
-    )
+def dashboard_summary(db: Session = Depends(get_db)):
+    rows = _rows(db, "live")
 
-    return build_dashboard_summary(
+    summary = build_dashboard_summary(
         rows,
         datetime.now().date(),
     )
 
+    summary["pending_review"] = sum(
+        1
+        for row in rows
+        if (row["review_status"] or "Pending") == "Pending"
+    )
+
+    summary["reviewed"] = sum(
+        1
+        for row in rows
+        if (row["review_status"] or "Pending") == "Completed"
+    )
+
+    return summary
+
 
 # ============================================================
-# IMPORT CSV / JSON
+# CSV / JSON IMPORT
 # ============================================================
 
 @app.post("/api/v1/imports")
@@ -564,9 +502,8 @@ async def import_scans(
     current_user: CurrentUser = Depends(get_current_user),
 ):
     mysql_user_id = get_mysql_user_id(db, current_user)
-    data = await file.read(
-        2_000_001
-    )
+
+    data = await file.read(2_000_001)
 
     if len(data) > 2_000_000:
         raise HTTPException(
@@ -579,7 +516,6 @@ async def import_scans(
             file.filename or "",
             data,
         )
-
     except Exception as error:
         raise HTTPException(
             status_code=400,
@@ -589,24 +525,12 @@ async def import_scans(
     accepted = 0
     errors = []
 
-    for row_number, value in enumerate(
-        domains,
-        start=1,
-    ):
-
+    for row_number, value in enumerate(domains, start=1):
         try:
+            if not isinstance(value, str):
+                raise ValueError("Domain must be text.")
 
-            if not isinstance(
-                value,
-                str,
-            ):
-                raise ValueError(
-                    "Domain must be text."
-                )
-
-            normalise_domain(
-                value
-            )
+            normalise_domain(value)
 
             scan_domain(
                 db,
@@ -618,12 +542,8 @@ async def import_scans(
             accepted += 1
 
         except Exception as error:
-
             db.rollback()
-
-            errors.append(
-                f"Row {row_number}: {error}"
-            )
+            errors.append(f"Row {row_number}: {error}")
 
     return {
         "filename": file.filename,
@@ -634,14 +554,13 @@ async def import_scans(
 
 
 # ============================================================
-# OPTIONAL OPEN-SQUAT REFRESH
+# OPEN-SQUAT REFRESH
 # ============================================================
 
 @app.post("/api/v1/opensquat/refresh")
 def refresh_opensquat():
     try:
         return refresh_live_domains()
-
     except Exception as error:
         raise HTTPException(
             status_code=500,
