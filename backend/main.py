@@ -7,6 +7,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from backend.database import get_db, init_db
+from backend.auth import CurrentUser, get_current_user
 from backend.services.dashboard_service import build_dashboard_summary
 from backend.services.model_service import model_status
 from backend.services.opensquat_service import refresh_live_domains
@@ -42,10 +43,47 @@ app.add_middleware(
 
 
 # ============================================================
-# CURRENT DEMO USER
+# AUTHENTICATED USER MAPPING
 # ============================================================
 
-DEMO_MANUAL_USER_ID = 1
+def get_mysql_user_id(db: Session, current_user: CurrentUser) -> int:
+    """Resolve the authenticated Supabase UUID to an app_users.user_id."""
+    result = db.execute(
+        text("SELECT user_id FROM app_users WHERE supabase_user_id = :supabase_id"),
+        {"supabase_id": current_user.id},
+    ).first()
+    if result:
+        return int(result[0])
+
+    # Create a mapping for a genuine authenticated Supabase account.
+    # This requires INSERT permission on app_users.
+    try:
+        db.execute(
+            text("INSERT INTO app_users (supabase_user_id) VALUES (:supabase_id)"),
+            {"supabase_id": current_user.id},
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        # A concurrent request may have inserted the mapping; check again.
+        result = db.execute(
+            text("SELECT user_id FROM app_users WHERE supabase_user_id = :supabase_id"),
+            {"supabase_id": current_user.id},
+        ).first()
+        if not result:
+            raise HTTPException(
+                status_code=403,
+                detail="Your Supabase account is not mapped to a MySQL user. Contact the project administrator.",
+            )
+        return int(result[0])
+
+    result = db.execute(
+        text("SELECT user_id FROM app_users WHERE supabase_user_id = :supabase_id"),
+        {"supabase_id": current_user.id},
+    ).first()
+    if not result:
+        raise HTTPException(status_code=500, detail="Could not map your account to MySQL.")
+    return int(result[0])
 
 # Temporary in-memory review storage because the current
 # MySQL schema does not contain review fields.
@@ -111,13 +149,15 @@ def health():
 def create_scan(
     request: DomainRequest,
     db: Session = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
 ):
     try:
+        mysql_user_id = get_mysql_user_id(db, current_user)
         scan = scan_domain(
             db,
             request.domain,
             "manual",
-            DEMO_MANUAL_USER_ID,
+            mysql_user_id,
         )
 
         return scan_response(
@@ -144,12 +184,15 @@ def create_scan(
 def _rows(
     db: Session,
     collection: str,
+    mysql_user_id: int | None = None,
 ):
     if collection == "live":
         user_filter = "sr.user_id IS NULL"
 
     elif collection == "personal":
-        user_filter = "sr.user_id IS NOT NULL"
+        if mysql_user_id is None:
+            raise HTTPException(status_code=401, detail="Sign in to view personal scans.")
+        user_filter = "sr.user_id = :mysql_user_id"
 
     else:
         raise HTTPException(
@@ -193,18 +236,22 @@ def _rows(
         """
     )
 
-    return db.execute(query).mappings().all()
+    params = {"mysql_user_id": mysql_user_id} if collection == "personal" else {}
+    return db.execute(query, params).mappings().all()
 
 
 @app.get("/api/v1/scans")
 def get_scans(
     collection: str = "live",
     db: Session = Depends(get_db),
+    current_user: CurrentUser | None = Depends(get_current_user),
 ):
-    rows = _rows(
-        db,
-        collection,
+    mysql_user_id = (
+        get_mysql_user_id(db, current_user)
+        if collection == "personal" and current_user is not None
+        else None
     )
+    rows = _rows(db, collection, mysql_user_id)
 
     records = []
 
@@ -281,6 +328,7 @@ def get_scans(
 def get_scan(
     scan_id: int,
     db: Session = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
 ):
     query = text(
         """
@@ -339,6 +387,10 @@ def get_scan(
             status_code=404,
             detail="Scan not found.",
         )
+
+    mysql_user_id = get_mysql_user_id(db, current_user)
+    if row["user_id"] is not None and int(row["user_id"]) != mysql_user_id:
+        raise HTTPException(status_code=404, detail="Scan not found.")
 
     review = REVIEWS.get(
         scan_id,
@@ -436,6 +488,7 @@ def save_review(
     scan_id: int,
     review: ReviewRequest,
     db: Session = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
 ):
     if review.decision not in {
         "Confirmed Phishing",
@@ -449,18 +502,14 @@ def save_review(
             ),
         )
 
+    mysql_user_id = get_mysql_user_id(db, current_user)
     exists = db.execute(
-        text(
-            """
-            SELECT scan_id
-            FROM scan_results
-            WHERE scan_id = :scan_id
-            """
-        ),
-        {
-            "scan_id": scan_id
-        },
+        text("SELECT scan_id, user_id FROM scan_results WHERE scan_id = :scan_id"),
+        {"scan_id": scan_id},
     ).first()
+
+    if exists is not None and exists[1] is not None and int(exists[1]) != mysql_user_id:
+        raise HTTPException(status_code=404, detail="Scan not found.")
 
     if exists is None:
         raise HTTPException(
@@ -512,7 +561,9 @@ def dashboard_summary(
 async def import_scans(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
 ):
+    mysql_user_id = get_mysql_user_id(db, current_user)
     data = await file.read(
         2_000_001
     )
@@ -561,7 +612,7 @@ async def import_scans(
                 db,
                 value,
                 "import",
-                DEMO_MANUAL_USER_ID,
+                mysql_user_id,
             )
 
             accepted += 1
