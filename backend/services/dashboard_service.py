@@ -1,3 +1,4 @@
+
 """Dashboard calculations for MySQL scan dictionaries."""
 
 from datetime import date, timedelta
@@ -23,22 +24,30 @@ def build_dashboard_summary(scans, today: date) -> dict:
     previous_monitored = 0
     previous_high_risk = 0
 
-    for scan in scans:
+    pending_review = 0
+    reviewed = 0
 
-        score = float(
-            scan["risk_score"] or 0
-        )
+    for scan in scans:
+        score = float(scan["risk_score"] or 0)
 
         if score >= 75:
             category = "High"
-
         elif score >= 40:
             category = "Medium"
-
         else:
             category = "Low"
 
         risk_distribution[category] += 1
+
+        # Calculate review counts from persisted MySQL fields.
+        review_status = (
+            scan.get("review_status") or "Pending"
+        ).strip().lower()
+
+        if review_status == "completed":
+            reviewed += 1
+        else:
+            pending_review += 1
 
         scan_time = scan["scan_time"]
 
@@ -47,15 +56,16 @@ def build_dashboard_summary(scans, today: date) -> dict:
         else:
             scan_date = scan_time
 
-        if scan_date < first_day:
+        if scan_date is None:
+            continue
 
+        if scan_date < first_day:
             previous_monitored += 1
 
             if category == "High":
                 previous_high_risk += 1
 
         elif scan_date in daily:
-
             daily[scan_date]["monitored"] += 1
 
             if category == "High":
@@ -67,30 +77,20 @@ def build_dashboard_summary(scans, today: date) -> dict:
     high_risk = previous_high_risk
 
     for day, counts in daily.items():
-
         monitored += counts["monitored"]
         high_risk += counts["high_risk"]
 
-        weekly_trend.append(
-            {
-                "name": day.strftime("%a"),
-                "monitored": monitored,
-                "high_risk": high_risk,
-            }
-        )
+        weekly_trend.append({
+            "name": day.strftime("%a"),
+            "monitored": monitored,
+            "high_risk": high_risk,
+        })
 
     return {
         "domains_monitored": len(scans),
-
-        "high_risk_alerts": risk_distribution[
-            "High"
-        ],
-
-        "pending_review": len(scans),
-
-        "reviewed": 0,
-
+        "high_risk_alerts": risk_distribution["High"],
+        "pending_review": pending_review,
+        "reviewed": reviewed,
         "risk_distribution": risk_distribution,
-
         "weekly_trend": weekly_trend,
     }
