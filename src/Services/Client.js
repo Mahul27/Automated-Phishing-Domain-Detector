@@ -4,6 +4,9 @@ const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000"
 ).replace(/\/$/, "");
 
+export const MAX_IMPORT_RECORDS = 1000;
+export const MAX_IMPORT_FILE_BYTES = 2_000_000;
+
 async function readResponseBody(response) {
   if (response.status === 204) return null;
 
@@ -80,6 +83,13 @@ export function updateScanReview(recordId, review) {
 }
 
 export function uploadScanFile(file) {
+  if (!/\.(csv|json)$/i.test(file.name)) {
+    throw new Error("Only CSV and JSON files are supported.");
+  }
+  if (file.size > MAX_IMPORT_FILE_BYTES) {
+    throw new Error("File must be 2 MB or smaller.");
+  }
+
   const formData = new FormData();
   formData.append("file", file);
 

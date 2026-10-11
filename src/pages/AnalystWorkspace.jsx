@@ -1,7 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../components/Header";
-import { fetchScans, createScan, uploadScanFile } from "../Services/Client";
+import {
+  fetchScans,
+  createScan,
+  uploadScanFile,
+  MAX_IMPORT_RECORDS,
+} from "../Services/Client";
 import Button from "../components/Button";
 import ApiState from "../components/ApiState";
 
@@ -16,6 +21,7 @@ export default function AnalystWorkspace() {
   );
   // Data Upload State
   const [fileData, setFileData] = useState(null);
+  const [lastImport, setLastImport] = useState(null);
   const [fileName, setFileName] = useState("");
   const [fileSize, setFileSize] = useState("");
   const [uploadError, setUploadError] = useState("");
@@ -25,20 +31,18 @@ export default function AnalystWorkspace() {
   const [searchTerm, setSearchTerm] = useState("");
   const [riskFilter, setRiskFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
-  const [sourceFilter, setSourceFilter] = useState("All");
   const [sortOption, setSortOption] = useState("Highest risk first");
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 10;
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, riskFilter, statusFilter, sourceFilter, sortOption]);
+  }, [searchTerm, riskFilter, statusFilter, sortOption]);
 
   const clearFilters = () => {
     setSearchTerm("");
     setRiskFilter("All");
     setStatusFilter("All");
-    setSourceFilter("All");
     setSortOption("Highest risk first");
   };
 
@@ -72,27 +76,35 @@ export default function AnalystWorkspace() {
   };
 
   const handleFileInputChange = async (e) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setUploadError("");
-      setUploading(true);
-      try {
-        const res = await uploadScanFile(file);
-        setFileName(file.name);
-        setFileSize(formatBytes(file.size));
-        setFileData({
-          name: res.filename || file.name,
-          totalCount: res.accepted_count + res.rejected_count,
-          appliedCount: res.accepted_count,
-          errors: res.errors || [],
-        });
-        await loadPersonalRecords();
-        setActiveTab("my_records");
-      } catch (err) {
-        setUploadError(err.message || "Failed to upload file");
-      } finally {
-        setUploading(false);
-      }
+    const input = e.target;
+    const file = input.files?.[0];
+    if (!file || uploading) return;
+
+    setUploadError("");
+    setFileData(null);
+    setFileName(file.name);
+    setFileSize(formatBytes(file.size));
+    setUploading(true);
+    try {
+      const res = await uploadScanFile(file);
+      setFileName(res.filename || file.name);
+      setFileData({
+        totalCount: res.accepted_count + res.rejected_count,
+        acceptedCount: res.accepted_count,
+        rejectedCount: res.rejected_count,
+        errors: res.errors || [],
+      });
+      setLastImport({
+        filename: res.filename || file.name,
+        acceptedCount: res.accepted_count,
+      });
+      await loadPersonalRecords();
+    } catch (err) {
+      setUploadError(err.message || "Failed to upload file.");
+    } finally {
+      setUploading(false);
+      // Allow selecting the same file again after an error or a completed import.
+      input.value = "";
     }
   };
 
@@ -107,8 +119,14 @@ export default function AnalystWorkspace() {
     setFileName("");
     setFileSize("");
     setUploadError("");
-    setSearchTerm("");
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleViewImportedRecords = () => {
+    clearFilters();
+    setSortOption("Newest first");
+    setCurrentPage(1);
+    setActiveTab("my_records");
   };
 
   const handleScanSubmit = async (e) => {
@@ -175,14 +193,7 @@ export default function AnalystWorkspace() {
       matchesStatus = r.review_status === "Pending" || !r.review_status;
     }
 
-    let matchesSource = true;
-    if (sourceFilter === "Manual") {
-      matchesSource = r.source === "manual";
-    } else if (sourceFilter === "Import") {
-      matchesSource = r.source !== "manual";
-    }
-
-    return matchesSearch && matchesRisk && matchesStatus && matchesSource;
+    return matchesSearch && matchesRisk && matchesStatus;
   });
 
   const sortedRecords = [...filteredRecords];
@@ -222,21 +233,21 @@ export default function AnalystWorkspace() {
           </p>
         </div>
         <div className="metric-card">
-          <h3>Manual searches</h3>
+          <h3>Completed reviews</h3>
           <div className="metric-sub">
-            {personalRecords.filter((r) => r.source === "manual").length}
+            {personalRecords.filter((r) => r.review_status === "Completed").length}
           </div>
           <p style={{ fontSize: "12px", color: "#64748b" }}>
-            Submitted one at a time
+            Analyst decisions saved
           </p>
         </div>
         <div className="metric-card">
-          <h3>Imported records</h3>
-          <div className="metric-sub">
-            {personalRecords.filter((r) => r.source !== "manual").length}
-          </div>
+          <h3>Last file import</h3>
+          <div className="metric-sub">{lastImport?.acceptedCount ?? "—"}</div>
           <p style={{ fontSize: "12px", color: "#64748b" }}>
-            {fileName || "No file imported"}
+            {lastImport
+              ? `${lastImport.filename} · records accepted`
+              : "No file imported this session"}
           </p>
         </div>
         <div className="metric-card">
@@ -335,20 +346,6 @@ export default function AnalystWorkspace() {
                     <option value="Completed">Completed</option>
                   </select>
                 </div>
-                <div style={{ display: "flex", flexDirection: "column" }}>
-                  <label style={{ fontSize: "12px", fontWeight: "bold" }}>
-                    Record source
-                  </label>
-                  <select
-                    style={{ width: "150px", padding: "5px" }}
-                    value={sourceFilter}
-                    onChange={(e) => setSourceFilter(e.target.value)}
-                  >
-                    <option value="All">All sources</option>
-                    <option value="Manual">Manual search</option>
-                    <option value="Import">File import</option>
-                  </select>
-                </div>
                 <div
                   style={{
                     display: "flex",
@@ -410,9 +407,9 @@ export default function AnalystWorkspace() {
                       <td>
                         <div style={{ fontWeight: "bold" }}>{item.domain}</div>
                         <div style={{ fontSize: "12px", color: "gray" }}>
-                          {item.source === "manual"
-                            ? "MANUAL"
-                            : `IMPORT - ${item.original}`}
+                          {item.original && item.original !== item.domain
+                            ? item.original
+                            : "PERSONAL SCAN"}
                         </div>
                       </td>
                       <td
@@ -597,92 +594,159 @@ export default function AnalystWorkspace() {
       )}
 
       {activeTab === "import_csv" && (
-        <div className="scan-box" style={{ borderTop: "none" }}>
+        <div
+          className="scan-box"
+          style={{ borderTop: "none" }}
+          aria-busy={uploading}
+        >
+          <h2>Import a CSV or JSON file</h2>
+          <p>
+            Upload up to {MAX_IMPORT_RECORDS.toLocaleString()} domain or URL
+            records in a UTF-8 file, 2 MB or smaller. Valid records are scanned
+            and saved to My records.
+          </p>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,.json,text/csv,application/json"
+            aria-label="Choose a CSV or JSON file"
+            onChange={handleFileInputChange}
+            disabled={uploading}
+            style={{ display: "none" }}
+          />
           {uploadError && (
-            <p style={{ color: "red", marginBottom: "15px" }}>{uploadError}</p>
+            <p role="alert" style={{ color: "#b91c1c", marginBottom: "15px" }}>
+              {uploadError}
+            </p>
           )}
           {!fileData ? (
             <>
-              <h2>Choose a CSV or JSON file</h2>
-              <p>Upload a File. accepts up to 100 domain records at a time.</p>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".csv,.json,text/csv,application/json"
-                onChange={handleFileInputChange}
-                style={{ display: "none" }}
-              />
               <Button
                 variant="outline"
                 onClick={handleBrowseClick}
                 style={{ marginTop: "10px" }}
                 disabled={uploading}
               >
-                {uploading ? "UPLOADING..." : "BROWSE FILES"}
+                {uploading ? "SCANNING FILE..." : "BROWSE FILES"}
               </Button>
-
-              <div className="steps-box" style={{ marginTop: "20px" }}>
-                <h4 style={{ marginBottom: "10px", marginTop: "0" }}>
-                  Supported Input Formats:
-                </h4>
-                <ul>
-                  <li style={{ marginBottom: "5px" }}>
-                    <strong>CSV:</strong> 1st row header <code>domain</code>,
-                    then one domain or URL per line.
-                  </li>
-                  <li>
-                    <strong>JSON:</strong> Array of objects containing a{" "}
-                    <code>"domain"</code> property (or array of domain strings).
-                  </li>
-                </ul>
-                <h4 style={{ marginTop: "15px", marginBottom: "10px" }}>
-                  Formatting Rules:
-                </h4>
-                <ul>
-                  <li style={{ marginBottom: "5px" }}>
-                    Must include a valid top-level domain (e.g.,{" "}
-                    <code>.com</code>, <code>.org</code>)
-                  </li>
-                  <li style={{ marginBottom: "5px" }}>
-                    Full URLs are accepted (e.g.,{" "}
-                    <code>https://example.com/path</code>) — base domain is
-                    extracted automatically
-                  </li>
-                  <li style={{ marginBottom: "5px" }}>
-                    No spaces or special characters allowed (except hyphens)
-                  </li>
-                  <li>Max file size 2 MB and up to 100 records per upload</li>
-                </ul>
-              </div>
+              {uploading && (
+                <div
+                  role="status"
+                  className="state-box"
+                  style={{ marginTop: "20px" }}
+                >
+                  <strong>{fileName}</strong>
+                  <p>Size: {fileSize}</p>
+                  <p>
+                    Uploading and scanning the records. Large imports may take
+                    several minutes; keep this page open until the results appear.
+                  </p>
+                </div>
+              )}
             </>
           ) : (
             <div className="state-box">
-              <strong>{fileName}</strong>
-              <p>
-                Size: {fileSize} | Accepted: {fileData.appliedCount} /{" "}
-                {fileData.totalCount}
-              </p>
-              {fileData.errors && fileData.errors.length > 0 && (
-                <div style={{ color: "red", marginTop: "10px" }}>
-                  <strong>Errors:</strong>
-                  <ul>
+              <div role="status">
+                <strong>{fileName}</strong>
+                <p>
+                  Size: {fileSize} | Records processed: {fileData.totalCount}
+                </p>
+                <p>
+                  Accepted: {fileData.acceptedCount} | Rejected:{" "}
+                  {fileData.rejectedCount}
+                </p>
+                <p>
+                  {fileData.totalCount === 0
+                    ? "No records were found. Add domains or URLs and try again."
+                    : fileData.acceptedCount === 0
+                      ? "No records were imported. Correct the rejected records and try again."
+                      : `${fileData.acceptedCount} ${fileData.acceptedCount === 1 ? "record was" : "records were"} scanned and saved to My records.`}
+                </p>
+              </div>
+              {fileData.errors.length > 0 && (
+                <details open style={{ color: "#b91c1c", marginTop: "10px" }}>
+                  <summary>Rejected records ({fileData.rejectedCount})</summary>
+                  <ul style={{ maxHeight: "240px", overflowY: "auto" }}>
                     {fileData.errors.map((err, idx) => (
                       <li key={idx}>
-                        Row {err.row}: {err.message}
+                        {typeof err === "string"
+                          ? err
+                          : `Row ${err.row}: ${err.message}`}
                       </li>
                     ))}
                   </ul>
-                </div>
+                </details>
               )}
-              <Button
-                variant="outline"
-                onClick={handleReset}
-                style={{ marginTop: "10px" }}
+              <div
+                style={{
+                  display: "flex",
+                  gap: "10px",
+                  flexWrap: "wrap",
+                  marginTop: "15px",
+                }}
               >
-                UPLOAD DIFFERENT FILE
-              </Button>
+                {fileData.acceptedCount > 0 && (
+                  <Button
+                    variant="primary"
+                    onClick={handleViewImportedRecords}
+                    disabled={uploading}
+                  >
+                    VIEW IMPORTED RECORDS
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  onClick={handleReset}
+                  disabled={uploading}
+                >
+                  UPLOAD ANOTHER FILE
+                </Button>
+              </div>
             </div>
           )}
+
+          <div className="steps-box" style={{ marginTop: "20px" }}>
+            <h4 style={{ marginBottom: "10px", marginTop: "0" }}>
+              Supported input formats
+            </h4>
+            <ul>
+              <li style={{ marginBottom: "5px" }}>
+                <strong>CSV:</strong> Use a <code>url</code> or <code>domain</code>{" "}
+                column header, or put one value per line without a header.
+              </li>
+              <li>
+                <strong>JSON:</strong> Use an array of objects with a{" "}
+                <code>"url"</code> or <code>"domain"</code> property, or an array
+                of strings. If both fields are present, <code>url</code> is used.
+              </li>
+            </ul>
+            <p><strong>CSV example</strong></p>
+            <pre style={{ overflowX: "auto" }}>
+              <code>{"url\nhttps://example.com/login\nexample.org"}</code>
+            </pre>
+            <p><strong>JSON example</strong></p>
+            <pre style={{ overflowX: "auto" }}>
+              <code>{'[\n  { "url": "https://example.com/login" },\n  { "domain": "example.org" }\n]'}</code>
+            </pre>
+            <h4 style={{ marginTop: "15px", marginBottom: "10px" }}>
+              Formatting rules
+            </h4>
+            <ul>
+              <li style={{ marginBottom: "5px" }}>
+                Use complete domains such as <code>example.com</code> or
+                HTTP/HTTPS URLs. Paths and query parameters are removed before
+                scanning.
+              </li>
+              <li style={{ marginBottom: "5px" }}>
+                Avoid spaces inside a domain or URL, email addresses, and port
+                numbers.
+              </li>
+              <li>
+                Use UTF-8 encoding. The limit is 2 MB and{" "}
+                {MAX_IMPORT_RECORDS.toLocaleString()} records per upload.
+              </li>
+            </ul>
+          </div>
         </div>
       )}
     </>
