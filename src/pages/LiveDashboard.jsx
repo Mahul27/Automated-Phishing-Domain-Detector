@@ -1,10 +1,15 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
-import { fetchDashboardSummary, fetchScans } from "../Services/Client";
 import Button from "../components/Button";
 import ApiState from "../components/ApiState";
 import { getRiskColor } from "../utils/risk";
+import {
+  checkBackendHealth,
+  fetchDashboardSummary,
+  fetchScans,
+  refreshLiveDomains,
+} from "../Services/Client";
 import {
   ComposedChart,
   Line,
@@ -16,41 +21,288 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-export default function LiveDashboard() {
-  const navigate = useNavigate();
-  const [summaryData, setSummaryData] = useState(null);
-  const [liveRecords, setLiveRecords] = useState([]);
+const ERROR_MESSAGES = {
+  invalid_limit: "Choose between 1 and 2,000 new domains per fetch.",
+  refresh_in_progress:
+    "A live feed refresh is already running. Try again once it completes.",
+  feed_timeout:
+    "The OpenSquat feed took too long to respond. Please try again later.",
+  feed_unavailable:
+    "Could not fetch the OpenSquat feed. Please try again later.",
+  database_unavailable:
+    "Could not access saved live results. Please try again later.",
+  request_failed:
+    "The live feed request failed. Check that the backend is running, then try again.",
+};
+
+function safeCount(value) {
+  return Number.isInteger(value) && value >= 0 ? value : 0;
+}
+
+// Display controlled messages, including when an older backend returns raw SQL.
+function liveFeedFeedback(result) {
+  if (!result) return null;
+
+  const added = safeCount(result.added_count);
+  const failed = safeCount(result.failed_count);
+  const scanError =
+    failed > 0
+      ? `${failed} ${failed === 1 ? "domain" : "domains"} could not be scanned. Please try fetching again later.`
+      : "Some domains could not be scanned. Please try fetching again later.";
+
+  if (result.status !== "success") {
+    return {
+      tone: "error",
+      title:
+        "The live feed refresh did not complete. Saved results are still available.",
+      detail:
+        failed > 0
+          ? scanError
+          : Object.hasOwn(ERROR_MESSAGES, result.error_code)
+            ? ERROR_MESSAGES[result.error_code]
+            : "Could not fetch and scan new domains. Please try again later.",
+      warning: null,
+    };
+  }
+
+  const detail = failed > 0 || result.error ? scanError : null;
+  const warning =
+    result.warning_code === "fetch_time_not_saved"
+      ? "The last fetch time could not be saved. Saved domain results are still available."
+      : result.warning
+        ? "The refresh completed with a warning. Saved domain results are still available."
+        : null;
+
+  return {
+    tone: detail || warning ? "warning" : "success",
+    title:
+      added === 0
+        ? "The feed was checked. No new domains were added."
+        : `${added} new ${added === 1 ? "domain was" : "domains were"} scanned and added to the live results.`,
+    detail,
+    warning,
+  };
+}
+
+function useLiveDashboardFeed() {
+  const [records, setRecords] = useState([]);
+  const [summary, setSummary] = useState(null);
+  const [health, setHealth] = useState(null);
+  const [hasData, setHasData] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshResult, setRefreshResult] = useState(null);
+  const mounted = useRef(false);
+  const hasLoaded = useRef(false);
+  const readRequest = useRef(null);
+  const healthRequest = useRef(null);
+  const refreshRequest = useRef(false);
+
+  const updateHealth = useCallback(() => {
+    if (healthRequest.current) return healthRequest.current;
+    const request = checkBackendHealth()
+      .then((backendHealth) => {
+        if (mounted.current) setHealth(backendHealth);
+      })
+      .catch(() => {
+        if (mounted.current) setHealth(null);
+      })
+      .finally(() => {
+        if (healthRequest.current === request) healthRequest.current = null;
+      });
+    healthRequest.current = request;
+    return request;
+  }, []);
+
+  const reload = useCallback(async () => {
+    if (readRequest.current) return readRequest.current;
+
+    const request = (async () => {
+      if (mounted.current) {
+        setLoading(!hasLoaded.current);
+      }
+      // Readiness updates independently, even if saved results cannot be read.
+      updateHealth();
+      try {
+        const [scans, dashboard] = await Promise.all([
+          fetchScans("live"),
+          fetchDashboardSummary(),
+        ]);
+        if (mounted.current) {
+          setRecords(scans.records || []);
+          setSummary(dashboard);
+          setError(null);
+          setHasData(true);
+          hasLoaded.current = true;
+        }
+        return true;
+      } catch (err) {
+        if (mounted.current)
+          setError(err.message || "Could not load live results.");
+        return false;
+      } finally {
+        if (mounted.current) {
+          setLoading(false);
+        }
+      }
+    })();
+
+    readRequest.current = request;
+    try {
+      return await request;
+    } finally {
+      if (readRequest.current === request) readRequest.current = null;
+    }
+  }, [updateHealth]);
+
+  useEffect(() => {
+    mounted.current = true;
+    reload();
+
+    return () => {
+      mounted.current = false;
+    };
+  }, [reload]);
+
+  const refresh = async (limit) => {
+    if (refreshRequest.current || !mounted.current) return;
+    refreshRequest.current = true;
+    setRefreshing(true);
+    setRefreshResult(null);
+    try {
+      const result = await refreshLiveDomains(limit);
+      if (result.status !== "success" && result.status !== "failed") {
+        throw new Error(
+          "The live feed returned an unexpected response. Try Fetch new domains again.",
+        );
+      }
+      // OpenSquat failures can use HTTP 200; preserve the result status and error.
+      if (mounted.current) setRefreshResult(result);
+    } catch {
+      if (mounted.current) {
+        setRefreshResult({
+          status: "failed",
+          added_count: 0,
+          error_code: "request_failed",
+        });
+      }
+    } finally {
+      // Re-read saved data even after a failed run, which may have saved scans.
+      if (readRequest.current) await readRequest.current;
+      if (mounted.current) await reload();
+      refreshRequest.current = false;
+      if (mounted.current) setRefreshing(false);
+    }
+  };
+
+  return {
+    records,
+    summary,
+    health,
+    hasData,
+    loading,
+    error,
+    refreshing,
+    refreshResult,
+    reload,
+    refresh,
+  };
+}
+
+function LiveFeedControls({ feed }) {
+  const [limit, setLimit] = useState(10);
+  const source = feed.health?.opensquat;
+  const unavailable = source?.status === "unavailable";
+  const busy = feed.refreshing;
+  const result = feed.refreshResult;
+  const lastFetch = result?.last_fetch_at || source?.last_fetch_at;
+  const lastFetchDate = lastFetch ? new Date(lastFetch) : null;
+  const hasFetchTime = lastFetchDate && !Number.isNaN(lastFetchDate.getTime());
+  const feedback = liveFeedFeedback(result);
+
+  return (
+    <section
+      className="state-box live-feed-controls"
+      aria-busy={feed.refreshing}
+    >
+      <div className="live-feed-toolbar">
+        <div>
+          <h2>OpenSquat live domains</h2>
+          <p>
+            Choose the maximum number of new domains to scan, then select Fetch
+            new domains. Results stay unchanged while you review them and update
+            after your fetch finishes.
+          </p>
+          <p className="live-feed-updated">
+            Last domain fetch:{" "}
+            {hasFetchTime ? lastFetchDate.toLocaleString() : "Not recorded yet"}
+          </p>
+        </div>
+        <div className="live-feed-actions">
+          <label className="live-feed-limit">
+            New domains per fetch
+            <select
+              value={limit}
+              onChange={(event) => setLimit(Number(event.target.value))}
+              disabled={busy}
+            >
+              {[10, 25, 50, 100, 200, 500, 1000, 2000].map((count) => (
+                <option key={count} value={count}>
+                  {count.toLocaleString()}
+                </option>
+              ))}
+            </select>
+          </label>
+          <Button
+            variant="primary"
+            onClick={() => feed.refresh(limit)}
+            disabled={busy || unavailable || feed.loading}
+          >
+            {busy ? "FETCHING DOMAINS…" : "FETCH NEW DOMAINS"}
+          </Button>
+        </div>
+      </div>
+
+      {unavailable && (
+        <p role="alert" className="live-feed-error">
+          OpenSquat is unavailable:{" "}
+          {source.reason || "The backend feed needs configuration."}
+        </p>
+      )}
+      {busy && (
+        <p role="status">
+          OpenSquat is fetching the feed and scanning new domains. Larger
+          batches take longer. Keep this page open for the result.
+        </p>
+      )}
+      {feedback && (
+        <div
+          role={feedback.tone === "success" ? "status" : "alert"}
+          className={`live-feed-${feedback.tone}`}
+        >
+          <p>{feedback.title}</p>
+          {feedback.detail && <p>{feedback.detail}</p>}
+          {feedback.warning && <p>{feedback.warning}</p>}
+        </div>
+      )}
+    </section>
+  );
+}
+
+export default function LiveDashboard() {
+  const navigate = useNavigate();
+  const feed = useLiveDashboardFeed();
+  const { summary: summaryData, records: liveRecords } = feed;
 
   const [currentPage, setCurrentPage] = useState(1);
   const alertsPerPage = 10;
 
-  const loadData = async (showLoading = true) => {
-    if (showLoading) setLoading(true);
-    setError(null);
-    try {
-      const [summaryRes, scansRes] = await Promise.all([
-        fetchDashboardSummary(),
-        fetchScans("live"),
-      ]);
-      setSummaryData(summaryRes);
-      setLiveRecords(scansRes.records || []);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadData(false);
-  }, []);
-
   const totalPages = Math.max(1, Math.ceil(liveRecords.length / alertsPerPage));
+  const displayPage = Math.min(currentPage, totalPages);
   const currentAlerts = liveRecords.slice(
-    (currentPage - 1) * alertsPerPage,
-    currentPage * alertsPerPage,
+    (displayPage - 1) * alertsPerPage,
+    displayPage * alertsPerPage,
   );
 
   return (
@@ -58,17 +310,25 @@ export default function LiveDashboard() {
       <Header
         title="Live dashboard"
         subtitle={
-          liveRecords.some((record) =>
-            record.model_name?.startsWith("Heuristic"),
-          )
-            ? "Live overview of newly registered domains · Test scores until the training CSV is available"
-            : "Live overview of newly registered domains and flagged alerts"
+          feed.health?.model?.mode === "heuristic"
+            ? "OpenSquat live domains · Fallback risk scores while the trained model is unavailable"
+            : "Live overview of domains detected by OpenSquat and saved for review"
         }
       />
 
-      <ApiState loading={loading} error={error} onRetry={loadData} />
+      <LiveFeedControls feed={feed} />
+      {feed.error && feed.hasData && (
+        <p className="live-feed-warning">
+          Showing the last saved results. The latest update failed.
+        </p>
+      )}
+      <ApiState
+        loading={feed.loading}
+        error={feed.error}
+        onRetry={feed.reload}
+      />
 
-      {!loading && !error && summaryData && (
+      {summaryData && (
         <>
           <section className="metrics-row">
             <div className="metric-card">
@@ -81,21 +341,11 @@ export default function LiveDashboard() {
             </div>
             <div className="metric-card">
               <h3>PENDING REVIEW</h3>
-              <div className="metric-sub">
-                {
-                  liveRecords.filter((r) => r.review_status !== "Completed")
-                    .length
-                }
-              </div>
+              <div className="metric-sub">{summaryData.pending_review}</div>
             </div>
             <div className="metric-card">
               <h3>REVIEWED</h3>
-              <div className="metric-sub">
-                {
-                  liveRecords.filter((r) => r.review_status === "Completed")
-                    .length
-                }
-              </div>
+              <div className="metric-sub">{summaryData.reviewed}</div>
             </div>
           </section>
 
@@ -398,27 +648,27 @@ export default function LiveDashboard() {
                 marginBottom: "16px",
               }}
             >
-              <h2 style={{ margin: 0 }}>Recent domain alerts</h2>
+              <h2 style={{ margin: 0 }}>Recent live domains</h2>
               <div
                 style={{ display: "flex", gap: "8px", alignItems: "center" }}
               >
                 <span style={{ fontSize: "14px", color: "#64748b" }}>
-                  Page {currentPage} of {totalPages}
+                  Page {displayPage} of {totalPages}
                 </span>
                 <Button
                   variant="default"
                   size="small"
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={displayPage === 1}
+                  onClick={() => setCurrentPage(Math.max(1, displayPage - 1))}
                 >
                   Previous
                 </Button>
                 <Button
                   variant="default"
                   size="small"
-                  disabled={currentPage === totalPages}
+                  disabled={displayPage === totalPages}
                   onClick={() =>
-                    setCurrentPage((p) => Math.min(totalPages, p + 1))
+                    setCurrentPage(Math.min(totalPages, displayPage + 1))
                   }
                 >
                   Next
@@ -436,6 +686,8 @@ export default function LiveDashboard() {
                     <th>Risk Score</th>
                     <th>Prediction</th>
                     <th>Status</th>
+                    <th>Recorded</th>
+                    <th>Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -467,12 +719,44 @@ export default function LiveDashboard() {
                       >
                         {alert.prediction}
                       </td>
-                      <td>{alert.review_status}</td>
+                      <td>{alert.review_status || "Pending"}</td>
+                      <td>
+                        {alert.scan_time
+                          ? new Date(alert.scan_time).toLocaleString()
+                          : "Unknown"}
+                      </td>
+                      <td>
+                        <Button
+                          variant="text"
+                          size="small"
+                          onClick={() => navigate(`/review/live/${alert.id}`)}
+                        >
+                          View result
+                        </Button>
+                      </td>
                     </tr>
                   ))}
+                  {currentAlerts.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan="6"
+                        style={{ textAlign: "center", padding: "24px" }}
+                      >
+                        No live domains have been saved yet. Use Fetch new
+                        domains to check the OpenSquat feed.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
+            <Button
+              variant="outline"
+              onClick={() => navigate("/queue")}
+              style={{ marginTop: "15px" }}
+            >
+              OPEN LIVE REVIEW QUEUE
+            </Button>
           </section>
         </>
       )}
