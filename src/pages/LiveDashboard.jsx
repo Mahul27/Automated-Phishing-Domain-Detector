@@ -1,3 +1,4 @@
+// This page displays real-time phishing feed data, key metrics, detection trends, and recent alerts.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
@@ -21,6 +22,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
+// Friendly error messages for feed fetch issues
 const ERROR_MESSAGES = {
   invalid_limit: "Choose between 1 and 2,000 new domains per fetch.",
   refresh_in_progress:
@@ -35,10 +37,12 @@ const ERROR_MESSAGES = {
     "The live feed request failed. Check that the backend is running, then try again.",
 };
 
+// Helper function to make sure counts are valid positive numbers
 function safeCount(value) {
   return Number.isInteger(value) && value >= 0 ? value : 0;
 }
 
+// Builds a short feedback message (success, warning, or error) after a feed refresh
 // Display controlled messages, including when an older backend returns raw SQL.
 function liveFeedFeedback(result) {
   if (!result) return null;
@@ -84,21 +88,30 @@ function liveFeedFeedback(result) {
   };
 }
 
+// Custom hook that manages all data and actions for the live dashboard
 function useLiveDashboardFeed() {
+  // Scanned domains, dashboard summary, and backend health status
   const [records, setRecords] = useState([]);
   const [summary, setSummary] = useState(null);
   const [health, setHealth] = useState(null);
+
+  // Loading and error states
   const [hasData, setHasData] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Refresh progress and feedback result
   const [refreshing, setRefreshing] = useState(false);
   const [refreshResult, setRefreshResult] = useState(null);
+
+  // Refs to avoid duplicate requests and prevent state updates after unmount
   const mounted = useRef(false);
   const hasLoaded = useRef(false);
   const readRequest = useRef(null);
   const healthRequest = useRef(null);
   const refreshRequest = useRef(false);
 
+  // Checks if the backend server is online and healthy
   const updateHealth = useCallback(() => {
     if (healthRequest.current) return healthRequest.current;
     const request = checkBackendHealth()
@@ -115,6 +128,7 @@ function useLiveDashboardFeed() {
     return request;
   }, []);
 
+  // Loads saved live scans and summary statistics from backend
   const reload = useCallback(async () => {
     if (readRequest.current) return readRequest.current;
 
@@ -156,6 +170,7 @@ function useLiveDashboardFeed() {
     }
   }, [updateHealth]);
 
+  // Load initial data when the dashboard first opens
   useEffect(() => {
     mounted.current = true;
     reload();
@@ -165,6 +180,7 @@ function useLiveDashboardFeed() {
     };
   }, [reload]);
 
+  // Fetches new domains from OpenSquat and runs scans on them
   const refresh = async (limit) => {
     if (refreshRequest.current || !mounted.current) return;
     refreshRequest.current = true;
@@ -210,7 +226,9 @@ function useLiveDashboardFeed() {
   };
 }
 
+// Controls toolbar: pick domain count, trigger fetch, and view status
 function LiveFeedControls({ feed }) {
+  // Number of domains to fetch (defaults to 10)
   const [limit, setLimit] = useState(10);
   const source = feed.health?.opensquat;
   const unavailable = source?.status === "unavailable";
@@ -226,6 +244,7 @@ function LiveFeedControls({ feed }) {
       className="state-box live-feed-controls"
       aria-busy={feed.refreshing}
     >
+      {/* Top toolbar with count selector and fetch button */}
       <div className="live-feed-toolbar">
         <div>
           <h2>OpenSquat live domains</h2>
@@ -264,18 +283,21 @@ function LiveFeedControls({ feed }) {
         </div>
       </div>
 
+      {/* Warning shown when OpenSquat is offline or unreachable */}
       {unavailable && (
         <p role="alert" className="live-feed-error">
           OpenSquat is unavailable:{" "}
           {source.reason || "The backend feed needs configuration."}
         </p>
       )}
+      {/* Progress message shown while fetching is running */}
       {busy && (
         <p role="status">
           OpenSquat is fetching the feed and scanning new domains. Larger
           batches take longer. Keep this page open for the result.
         </p>
       )}
+      {/* Feedback message shown after a fetch completes */}
       {feedback && (
         <div
           role={feedback.tone === "success" ? "status" : "alert"}
@@ -290,14 +312,18 @@ function LiveFeedControls({ feed }) {
   );
 }
 
+// Main Live Dashboard page component
 export default function LiveDashboard() {
   const navigate = useNavigate();
+  // Live feed hook containing records, metrics, and actions
   const feed = useLiveDashboardFeed();
   const { summary: summaryData, records: liveRecords } = feed;
 
+  // Pagination for the recent domains table
   const [currentPage, setCurrentPage] = useState(1);
   const alertsPerPage = 10;
 
+  // Calculate page numbers and slice current records
   const totalPages = Math.max(1, Math.ceil(liveRecords.length / alertsPerPage));
   const displayPage = Math.min(currentPage, totalPages);
   const currentAlerts = liveRecords.slice(
@@ -307,6 +333,7 @@ export default function LiveDashboard() {
 
   return (
     <>
+      {/* Page header */}
       <Header
         title="Live dashboard"
         subtitle={
@@ -316,12 +343,15 @@ export default function LiveDashboard() {
         }
       />
 
+      {/* Domain fetch controls and status */}
       <LiveFeedControls feed={feed} />
+      {/* Warning shown when latest update failed but saved data is still visible */}
       {feed.error && feed.hasData && (
         <p className="live-feed-warning">
           Showing the last saved results. The latest update failed.
         </p>
       )}
+      {/* Loading state or error retry prompt */}
       <ApiState
         loading={feed.loading}
         error={feed.error}
@@ -330,6 +360,7 @@ export default function LiveDashboard() {
 
       {summaryData && (
         <>
+          {/* Key metric cards (Monitored, Alerts, Pending, Reviewed) */}
           <section className="metrics-row">
             <div className="metric-card">
               <h3>DOMAINS MONITORED</h3>
@@ -349,6 +380,7 @@ export default function LiveDashboard() {
             </div>
           </section>
 
+          {/* 7-day cumulative detection trend chart */}
           <section
             className="chart-section"
             style={{
@@ -487,10 +519,13 @@ export default function LiveDashboard() {
             </div>
           </section>
 
+          {/* Risk distribution breakdown and manual investigation CTA */}
           <section className="bottom-row">
+            {/* Risk distribution percentage bar and counts */}
             <div className="info-card">
               <h3 style={{ marginBottom: "16px" }}>RISK DISTRIBUTION</h3>
               {(() => {
+                // Calculate percentage share for each risk category
                 const rd = summaryData.risk_distribution || {
                   Low: 0,
                   Medium: 0,
@@ -506,6 +541,7 @@ export default function LiveDashboard() {
 
                 return (
                   <>
+                    {/* Visual stacked progress bar */}
                     <div
                       style={{
                         display: "flex",
@@ -543,6 +579,7 @@ export default function LiveDashboard() {
                       />
                     </div>
 
+                    {/* Legend showing count per risk level */}
                     <div
                       style={{
                         display: "flex",
@@ -613,6 +650,7 @@ export default function LiveDashboard() {
                 );
               })()}
             </div>
+            {/* Quick link to manual search workspace */}
             <div className="info-card">
               <h3>MANUAL INVESTIGATION</h3>
               <p
@@ -639,6 +677,7 @@ export default function LiveDashboard() {
             </div>
           </section>
 
+          {/* Table of recent live scanned domains */}
           <section className="alerts-section">
             <div
               style={{
@@ -649,6 +688,7 @@ export default function LiveDashboard() {
               }}
             >
               <h2 style={{ margin: 0 }}>Recent live domains</h2>
+              {/* Pagination controls */}
               <div
                 style={{ display: "flex", gap: "8px", alignItems: "center" }}
               >
@@ -675,6 +715,7 @@ export default function LiveDashboard() {
                 </Button>
               </div>
             </div>
+            {/* Scanned domains list */}
             <div
               className="alerts-table-container"
               style={{ overflowX: "auto" }}
@@ -750,6 +791,7 @@ export default function LiveDashboard() {
                 </tbody>
               </table>
             </div>
+            {/* Link to view the complete live review queue */}
             <Button
               variant="outline"
               onClick={() => navigate("/queue")}
