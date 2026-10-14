@@ -235,7 +235,10 @@ export default function AnalystWorkspace() {
         <div className="metric-card">
           <h3>Completed reviews</h3>
           <div className="metric-sub">
-            {personalRecords.filter((r) => r.review_status === "Completed").length}
+            {
+              personalRecords.filter((r) => r.review_status === "Completed")
+                .length
+            }
           </div>
           <p style={{ fontSize: "12px", color: "#64748b" }}>
             Analyst decisions saved
@@ -639,7 +642,8 @@ export default function AnalystWorkspace() {
                   <p>Size: {fileSize}</p>
                   <p>
                     Uploading and scanning the records. Large imports may take
-                    several minutes; keep this page open until the results appear.
+                    several minutes; keep this page open until the results
+                    appear.
                   </p>
                 </div>
               )}
@@ -711,22 +715,32 @@ export default function AnalystWorkspace() {
             </h4>
             <ul>
               <li style={{ marginBottom: "5px" }}>
-                <strong>CSV:</strong> Use a <code>url</code> or <code>domain</code>{" "}
-                column header, or put one value per line without a header.
+                <strong>CSV:</strong> Use a <code>url</code> or{" "}
+                <code>domain</code> column header, or put one value per line
+                without a header.
               </li>
               <li>
                 <strong>JSON:</strong> Use an array of objects with a{" "}
-                <code>"url"</code> or <code>"domain"</code> property, or an array
-                of strings. If both fields are present, <code>url</code> is used.
+                <code>"url"</code> or <code>"domain"</code> property, or an
+                array of strings. If both fields are present, <code>url</code>{" "}
+                is used.
               </li>
             </ul>
-            <p><strong>CSV example</strong></p>
+            <p>
+              <strong>CSV example</strong>
+            </p>
             <pre style={{ overflowX: "auto" }}>
               <code>{"url\nhttps://example.com/login\nexample.org"}</code>
             </pre>
-            <p><strong>JSON example</strong></p>
+            <p>
+              <strong>JSON example</strong>
+            </p>
             <pre style={{ overflowX: "auto" }}>
-              <code>{'[\n  { "url": "https://example.com/login" },\n  { "domain": "example.org" }\n]'}</code>
+              <code>
+                {
+                  '[\n  { "url": "https://example.com/login" },\n  { "domain": "example.org" }\n]'
+                }
+              </code>
             </pre>
             <h4 style={{ marginTop: "15px", marginBottom: "10px" }}>
               Formatting rules
