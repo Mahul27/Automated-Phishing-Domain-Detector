@@ -1,3 +1,4 @@
+// This is the signup page where new users can register for an account.
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import Button from "../components/Button";
@@ -6,29 +7,36 @@ import { supabase } from "../utils/supabase";
 
 export default function Signup() {
   const navigate = useNavigate();
+  // Stores error message if signup fails
   const [error, setError] = useState("");
 
+  // Handles form submission to create a new user account with Supabase
   const handleSignup = async (e) => {
     e.preventDefault();
     const email = e.target.email.value;
     const password = e.target.password.value;
     const confirmPassword = e.target.confirmPassword.value;
 
+    // Check that both passwords match before sending
     if (password !== confirmPassword) {
       setError("Passwords do not match!");
       return;
     }
 
+    // Call Supabase signup API
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
     });
 
+    // Handle signup response
     if (error) {
       setError(error.message);
     } else if (data.session) {
+      // Direct login if email confirmation is not required
       navigate("/dashboard");
     } else {
+      // Prompt user to verify email
       alert(
         "Account created. Check your email to confirm it before logging in.",
       );
@@ -39,6 +47,7 @@ export default function Signup() {
   return (
     <div className="login-wrapper">
       <div className="container">
+        {/* Application branding header */}
         <header className="header">
           <span className="brand-title">
             Automated Phishing Domain Detector
@@ -46,6 +55,7 @@ export default function Signup() {
         </header>
 
         <main className="content">
+          {/* Logo illustration */}
           <section className="image-section">
             <img
               src={logo}
@@ -54,14 +64,18 @@ export default function Signup() {
             />
           </section>
 
+          {/* Registration form box */}
           <section className="login-section">
             <h2 className="login-title">CREATE ACCOUNT</h2>
 
+            {/* Error message banner */}
             {error && (
               <div style={{ color: "red", marginBottom: "10px" }}>{error}</div>
             )}
 
+            {/* Account creation form */}
             <form id="signup-form" onSubmit={handleSignup}>
+              {/* Email field */}
               <div className="form-group">
                 <input
                   type="email"
@@ -71,6 +85,7 @@ export default function Signup() {
                 />
               </div>
 
+              {/* Password field */}
               <div className="form-group">
                 <input
                   type="password"
@@ -81,6 +96,7 @@ export default function Signup() {
                 />
               </div>
 
+              {/* Confirm password field */}
               <div className="form-group">
                 <input
                   type="password"
@@ -91,11 +107,13 @@ export default function Signup() {
                 />
               </div>
 
+              {/* Create account button */}
               <Button type="submit" variant="outline" fullWidth size="large">
                 Create Account
               </Button>
             </form>
 
+            {/* Link back to login page */}
             <div
               style={{
                 marginTop: "15px",
@@ -111,3 +129,4 @@ export default function Signup() {
     </div>
   );
 }
+

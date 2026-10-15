@@ -1,3 +1,4 @@
+// This page allows analysts to run manual single-domain scans, import bulk domains from CSV/JSON, and review personal analysis history.
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../components/Header";
@@ -10,16 +11,19 @@ import {
 import Button from "../components/Button";
 import ApiState from "../components/ApiState";
 
+// Main Analyst Workspace component
 export default function AnalystWorkspace() {
+  // Stored personal scans and loading states
   const [personalRecords, setPersonalRecords] = useState([]);
   const [recordsLoading, setRecordsLoading] = useState(true);
   const [recordsError, setRecordsError] = useState(null);
 
+  // Active tab selection ("my_records", "manual_search", or "import_csv")
   const location = useLocation();
   const [activeTab, setActiveTab] = useState(
     location.state?.activeTab || "my_records",
   );
-  // Data Upload State
+  // File upload state for bulk domain imports
   const [fileData, setFileData] = useState(null);
   const [lastImport, setLastImport] = useState(null);
   const [fileName, setFileName] = useState("");
@@ -28,6 +32,7 @@ export default function AnalystWorkspace() {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
 
+  // Search, filter, sorting, and pagination states for the records table
   const [searchTerm, setSearchTerm] = useState("");
   const [riskFilter, setRiskFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -35,10 +40,12 @@ export default function AnalystWorkspace() {
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 10;
 
+  // Reset page to 1 whenever any filter or sorting option changes
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, riskFilter, statusFilter, sortOption]);
 
+  // Resets all table filters to default
   const clearFilters = () => {
     setSearchTerm("");
     setRiskFilter("All");
@@ -46,12 +53,13 @@ export default function AnalystWorkspace() {
     setSortOption("Highest risk first");
   };
 
-  // Manual Scan State
+  // Manual domain scan input state
   const [domain, setDomain] = useState(location.state?.domain || "");
   const [scanError, setScanError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  // Fetches personal scan records from the backend API
   const loadPersonalRecords = async (showLoading = true) => {
     if (showLoading) setRecordsLoading(true);
     setRecordsError(null);
@@ -65,16 +73,19 @@ export default function AnalystWorkspace() {
     }
   };
 
+  // Load saved records when the component mounts
   useEffect(() => {
     loadPersonalRecords(false);
   }, []);
 
+  // Opens the hidden file browser input
   const handleBrowseClick = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
   };
 
+  // Handles CSV or JSON file selection and uploads it for batch scanning
   const handleFileInputChange = async (e) => {
     const input = e.target;
     const file = input.files?.[0];
@@ -108,12 +119,14 @@ export default function AnalystWorkspace() {
     }
   };
 
+  // Helper function to format file sizes nicely
   const formatBytes = (bytes) => {
     if (bytes < 1024) return bytes + " B";
     else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
     else return (bytes / 1048576).toFixed(1) + " MB";
   };
 
+  // Resets the file upload state so a new file can be selected
   const handleReset = () => {
     setFileData(null);
     setFileName("");
@@ -122,6 +135,7 @@ export default function AnalystWorkspace() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  // Switches to the records list tab after a successful import
   const handleViewImportedRecords = () => {
     clearFilters();
     setSortOption("Newest first");
@@ -129,6 +143,7 @@ export default function AnalystWorkspace() {
     setActiveTab("my_records");
   };
 
+  // Cleans, validates, and scans a single manually entered domain
   const handleScanSubmit = async (e) => {
     e.preventDefault();
     setScanError("");
@@ -136,6 +151,7 @@ export default function AnalystWorkspace() {
     if (!input) return setScanError("Please enter a domain name.");
     if (/\s/.test(input))
       return setScanError("The domain cannot contain spaces.");
+    // Strip protocol (http/https) and URL paths
     input = input
       .replace(/^https?:\/\//i, "")
       .split("/")[0]
@@ -160,6 +176,7 @@ export default function AnalystWorkspace() {
     }
   };
 
+  // Filters personal records based on search query, risk category, and review status
   const filteredRecords = personalRecords.filter((r) => {
     const cleanSearch = searchTerm.trim().toLowerCase();
 
@@ -167,11 +184,13 @@ export default function AnalystWorkspace() {
     const originalText = (r.original || "").toLowerCase();
     const idText = (r.id || "").toString().toLowerCase();
 
+    // Check if domain, original URL, or record ID matches search
     const matchesSearch =
       domainText.includes(cleanSearch) ||
       originalText.includes(cleanSearch) ||
       idText.includes(cleanSearch);
 
+    // Filter by risk level
     let matchesRisk = true;
     if (riskFilter === "High") {
       matchesRisk =
@@ -186,6 +205,7 @@ export default function AnalystWorkspace() {
         (r.risk_score !== undefined && r.risk_score < 40);
     }
 
+    // Filter by review status (Pending or Completed)
     let matchesStatus = true;
     if (statusFilter === "Completed") {
       matchesStatus = r.review_status === "Completed";
@@ -196,6 +216,7 @@ export default function AnalystWorkspace() {
     return matchesSearch && matchesRisk && matchesStatus;
   });
 
+  // Sorts filtered records according to chosen sorting option
   const sortedRecords = [...filteredRecords];
   if (sortOption === "Highest risk first") {
     sortedRecords.sort((a, b) => (b.risk_score || 0) - (a.risk_score || 0));
@@ -211,6 +232,7 @@ export default function AnalystWorkspace() {
     );
   }
 
+  // Calculate page slice for table pagination
   const totalPages = Math.ceil(sortedRecords.length / recordsPerPage) || 1;
   const currentRecords = sortedRecords.slice(
     (currentPage - 1) * recordsPerPage,
@@ -219,11 +241,13 @@ export default function AnalystWorkspace() {
 
   return (
     <>
+      {/* Top page header */}
       <Header
         title="Analyst Workspace"
         subtitle="Domains you search manually or import from a file are stored here. They never change the automated live-dashboard totals."
       />
 
+      {/* Overview metric cards */}
       <div className="metrics-row">
         <div className="metric-card">
           <h3>My records</h3>
@@ -267,6 +291,7 @@ export default function AnalystWorkspace() {
         </div>
       </div>
 
+      {/* Tab selection buttons: My records, Manual search, or Import file */}
       <div style={{ marginBottom: "20px", display: "flex", gap: "10px" }}>
         <Button
           variant="default"
@@ -291,6 +316,7 @@ export default function AnalystWorkspace() {
         </Button>
       </div>
 
+      {/* Tab 1: List and filter personal/imported scan records */}
       {activeTab === "my_records" && (
         <div className="scan-box" style={{ borderTop: "none" }}>
           <h2>My analysis records</h2>
@@ -523,6 +549,7 @@ export default function AnalystWorkspace() {
         </div>
       )}
 
+      {/* Tab 2: Single domain manual scanner */}
       {activeTab === "manual_search" && (
         <div className="scan-box" style={{ borderTop: "none" }}>
           <h2>Enter a domain</h2>
@@ -596,6 +623,7 @@ export default function AnalystWorkspace() {
         </div>
       )}
 
+      {/* Tab 3: Bulk CSV or JSON file importer */}
       {activeTab === "import_csv" && (
         <div
           className="scan-box"

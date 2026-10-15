@@ -1,3 +1,4 @@
+// This page lets users request a password reset email or set a new password from a recovery link.
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Button from "../components/Button";
@@ -9,6 +10,7 @@ import {
   supabase,
 } from "../utils/supabase";
 
+// Reads error descriptions from the URL if a password reset link is invalid or expired
 function getConfirmationLinkError() {
   const hashParameters = new URLSearchParams(window.location.hash.slice(1));
   const queryParameters = new URLSearchParams(window.location.search);
@@ -19,20 +21,26 @@ function getConfirmationLinkError() {
   );
 }
 
+// Main Forgot Password component
 export default function ForgotPassword() {
   const navigate = useNavigate();
+  // Status tracking: checking recovery link, ready to set new password, or sending/submitting
   const [checkingRecovery, setCheckingRecovery] = useState(() =>
     hasActivePasswordRecovery(),
   );
   const [recoveryReady, setRecoveryReady] = useState(false);
   const [sending, setSending] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Feedback messages
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
+  // Check if the user arrived via a valid recovery link
   useEffect(() => {
     let componentIsMounted = true;
 
+    // Shows the new password input form once verified
     const showNewPasswordForm = (session) => {
       if (!componentIsMounted || !session) return;
 
@@ -93,6 +101,7 @@ export default function ForgotPassword() {
     };
   }, []);
 
+  // Step 1: Sends a password reset email to the user's address
   const handleSendConfirmationEmail = async (event) => {
     event.preventDefault();
     const inputEmail = event.target.email.value;
@@ -119,6 +128,7 @@ export default function ForgotPassword() {
     setSending(false);
   };
 
+  // Step 2: Saves the new password chosen by the user
   const handleResetPassword = async (event) => {
     event.preventDefault();
     const newPassword = event.target.newPassword.value;
@@ -127,12 +137,14 @@ export default function ForgotPassword() {
     setError("");
     setSuccess("");
 
+    // Make sure new passwords match
     if (newPassword !== confirmPassword) {
       setError("Passwords do not match!");
       return;
     }
 
     setSubmitting(true);
+    // Send updated password to Supabase
     const { error: updateError } = await supabase.auth.updateUser({
       password: newPassword,
     });
@@ -143,6 +155,7 @@ export default function ForgotPassword() {
       return;
     }
 
+    // Success notice and redirect to login
     setSuccess("Password changed successfully! Returning to login...");
     clearPasswordRecovery();
     await supabase.auth.signOut();
@@ -155,6 +168,7 @@ export default function ForgotPassword() {
   return (
     <div className="login-wrapper">
       <div className="container">
+        {/* Branding header */}
         <header className="header">
           <span className="brand-title">
             Automated Phishing Domain Detector
@@ -162,6 +176,7 @@ export default function ForgotPassword() {
         </header>
 
         <main className="content">
+          {/* Logo illustration */}
           <section className="image-section">
             <img
               src={logo}
@@ -170,25 +185,30 @@ export default function ForgotPassword() {
             />
           </section>
 
+          {/* Form card section */}
           <section className="login-section">
             <h2 className="login-title">
               {recoveryReady ? "CREATE NEW PASSWORD" : "RESET PASSWORD"}
             </h2>
 
+            {/* Link checking message */}
             {checkingRecovery && (
               <div style={{ marginBottom: "10px" }}>
                 Checking your confirmation link...
               </div>
             )}
+            {/* Error banner */}
             {error && (
               <div style={{ color: "red", marginBottom: "10px" }}>{error}</div>
             )}
+            {/* Success banner */}
             {success && (
               <div style={{ color: "green", marginBottom: "10px" }}>
                 {success}
               </div>
             )}
 
+            {/* Step 1 Form: Request password reset link */}
             {!checkingRecovery && !recoveryReady && (
               <form onSubmit={handleSendConfirmationEmail}>
                 <div className="form-group">
@@ -212,6 +232,7 @@ export default function ForgotPassword() {
               </form>
             )}
 
+            {/* Step 2 Form: Enter and confirm new password */}
             {recoveryReady && !success && (
               <form onSubmit={handleResetPassword}>
                 <div className="form-group">
@@ -246,6 +267,7 @@ export default function ForgotPassword() {
               </form>
             )}
 
+            {/* Link to login page */}
             <div
               style={{
                 marginTop: "15px",

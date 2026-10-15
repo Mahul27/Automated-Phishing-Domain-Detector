@@ -1,3 +1,4 @@
+// This page displays in-depth scan results, risk indicators, model explanations, and human review decisions for a domain.
 import { useState, useEffect } from "react";
 import Header from "../components/Header";
 import { useParams, useNavigate } from "react-router-dom";
@@ -6,14 +7,18 @@ import { getRiskColor } from "../utils/risk";
 import Button from "../components/Button";
 import ApiState from "../components/ApiState";
 
+// Main Scan Result component
 export default function ScanResult() {
+  // Read route parameters (source is "live" or "personal", id is the scan record ID)
   const { source, id } = useParams();
   const navigate = useNavigate();
 
+  // Scan record data and fetch states
   const [record, setRecord] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Review form states: chosen decision and analyst notes
   const [reviewStatus, setReviewStatus] = useState("pending");
   const [analystNote, setAnalystNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -21,6 +26,7 @@ export default function ScanResult() {
   const searchId = parseInt(id);
   const isPersonalRecord = source === "personal";
 
+  // Loads scan details by ID from the backend API
   const loadRecord = async (showLoading = true) => {
     if (showLoading) setLoading(true);
     setError(null);
@@ -34,6 +40,7 @@ export default function ScanResult() {
     }
   };
 
+  // Fetch scan details whenever the scan ID changes
   useEffect(() => {
     loadRecord(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -64,6 +71,7 @@ export default function ScanResult() {
     );
   }
 
+  // Helper flags to highlight risk features (e.g., brand match, domain age, entropy)
   const features = record.features || {};
   const hasShapExplanation =
     record.model_name === "XGBoost" &&
@@ -84,6 +92,7 @@ export default function ScanResult() {
     features.ssl_certificate_age_days != null &&
     features.ssl_certificate_age_days <= 30;
 
+  // Saves the analyst's final review decision and note to the backend
   const handleSaveDecision = async () => {
     if (reviewStatus === "pending") {
       navigate(isPersonalRecord ? "/workspace" : "/queue");
@@ -109,11 +118,13 @@ export default function ScanResult() {
 
   return (
     <>
+      {/* Top page header */}
       <Header
         title="Review Details"
         subtitle="Detailed analysis of the requested domain."
       />
 
+      {/* Back button to return to workspace or review queue */}
       <div style={{ marginBottom: "15px" }}>
         <Button
           variant="secondary"
@@ -123,7 +134,7 @@ export default function ScanResult() {
         </Button>
       </div>
 
-      {/* 1. Summary Information */}
+      {/* 1. Summary Information: domain, risk score, model prediction */}
       <section
         style={{
           border: "1px solid black",
@@ -361,7 +372,7 @@ export default function ScanResult() {
         </table>
       </section>
 
-      {/* 3. Model explanation */}
+      {/* 3. Model explanation: SHAP feature importances or heuristic notes */}
       <section
         style={{
           border: "1px solid black",
@@ -399,7 +410,7 @@ export default function ScanResult() {
         </div>
       </section>
 
-      {/* 4. Human Decision */}
+      {/* 4. Human Decision: view past review or submit a new decision */}
       <section
         style={{
           border: "1px solid black",

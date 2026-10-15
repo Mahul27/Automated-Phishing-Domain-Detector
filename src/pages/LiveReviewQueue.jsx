@@ -1,3 +1,4 @@
+// This page lets analysts search, filter, review, and export all live detected domains.
 import { useCallback, useEffect, useRef, useState } from "react";
 import Header from "../components/Header";
 import { useNavigate } from "react-router-dom";
@@ -6,6 +7,7 @@ import ApiState from "../components/ApiState";
 import { getRiskLevel, getRiskColor } from "../utils/risk";
 import { fetchScans } from "../Services/Client";
 
+// Column names used when exporting data to CSV
 const columns = [
   "id",
   "domain",
@@ -19,6 +21,7 @@ const columns = [
   "review_date",
 ];
 
+// Formats a single cell value safely for CSV export
 function csvCell(value) {
   const text = String(value ?? "");
   // Keep exported text (including analyst notes) from becoming spreadsheet formulas.
@@ -27,6 +30,7 @@ function csvCell(value) {
   return `"${safeText.replaceAll('"', '""')}"`;
 }
 
+// Converts a list of domain records into CSV text
 function buildLiveDomainsCsv(records) {
   const rows = records.map((record) => [
     record.id,
@@ -44,6 +48,7 @@ function buildLiveDomainsCsv(records) {
   return `\uFEFF${[columns, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n")}\r\n`;
 }
 
+// Creates and triggers the download of the CSV file in the browser
 function downloadLiveDomainsCsv(records) {
   const blob = new Blob([buildLiveDomainsCsv(records)], {
     type: "text/csv;charset=utf-8",
@@ -58,15 +63,20 @@ function downloadLiveDomainsCsv(records) {
   URL.revokeObjectURL(url);
 }
 
+// Main component for the Live Review Queue page
 export default function LiveReviewQueue() {
+  // Stored live records and loading/error states
   const [liveRecords, setLiveRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [hasData, setHasData] = useState(false);
+
+  // Refs to avoid memory leaks and duplicate network calls
   const mounted = useRef(false);
   const hasLoaded = useRef(false);
   const readRequest = useRef(null);
 
+  // Fetches live domain scans from the backend API
   const loadRecords = useCallback(async () => {
     if (readRequest.current) return readRequest.current;
 
@@ -96,6 +106,7 @@ export default function LiveReviewQueue() {
     }
   }, []);
 
+  // Fetch saved records when the page first loads
   // Read the saved snapshot on entry or an explicit error retry.
   useEffect(() => {
     mounted.current = true;
@@ -106,12 +117,17 @@ export default function LiveReviewQueue() {
   }, [loadRecords]);
 
   const navigate = useNavigate();
+
+  // Search input and dropdown filter states
   const [searchTerm, setSearchTerm] = useState("");
   const [riskFilter, setRiskFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
+
+  // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 15;
 
+  // Reset all filters back to default values
   const handleClearFilters = () => {
     setSearchTerm("");
     setRiskFilter("All");
@@ -119,20 +135,24 @@ export default function LiveReviewQueue() {
     setCurrentPage(1);
   };
 
+  // Filter records by domain search text, risk score, and review status
   const filteredData = liveRecords.filter((record) => {
     const cleanSearch = searchTerm.trim().toLowerCase();
 
+    // Check if domain or record ID matches search input
     const domainText = (record.domain || "").toLowerCase();
     const idText = (record.id || "").toString().toLowerCase();
 
     const matchesSearch =
       domainText.includes(cleanSearch) || idText.includes(cleanSearch);
 
+    // Check risk level filter (High, Medium, Low)
     let matchesRisk = true;
     if (riskFilter !== "All") {
       matchesRisk = getRiskLevel(record.risk_score) === riskFilter;
     }
 
+    // Check review status and decision filter
     let matchesStatus = true;
     if (statusFilter === "Pending review") {
       matchesStatus = record.review_status !== "Completed";
@@ -151,6 +171,7 @@ export default function LiveReviewQueue() {
     return matchesSearch && matchesRisk && matchesStatus;
   });
 
+  // Calculate total pages and records for the current page view
   const totalPages = Math.max(
     1,
     Math.ceil(filteredData.length / recordsPerPage),
@@ -163,12 +184,15 @@ export default function LiveReviewQueue() {
 
   return (
     <>
+      {/* Top page header */}
       <Header
         title="Live review queue"
         subtitle="Search and review domains detected by the OpenSquat live feed."
       />
 
+      {/* Filter and search toolbar */}
       <section className="filter-row">
+        {/* Domain or ID search input */}
         <input
           type="text"
           className="search-input"
@@ -179,6 +203,7 @@ export default function LiveReviewQueue() {
             setCurrentPage(1);
           }}
         />
+        {/* Risk level filter dropdown */}
         <select
           className="filter-select"
           value={riskFilter}
@@ -192,6 +217,7 @@ export default function LiveReviewQueue() {
           <option value="Medium">Medium Risk</option>
           <option value="Low">Low Risk</option>
         </select>
+        {/* Review status filter dropdown */}
         <select
           className="filter-select"
           value={statusFilter}
@@ -208,9 +234,11 @@ export default function LiveReviewQueue() {
           <option value="Confirmed phishing">Confirmed phishing</option>
           <option value="Not phishing">Not phishing</option>
         </select>
+        {/* Clear filters button */}
         <Button variant="outline" size="small" onClick={handleClearFilters}>
           CLEAR FILTERS
         </Button>
+        {/* Export to CSV button */}
         <Button
           variant="primary"
           size="small"
@@ -221,15 +249,18 @@ export default function LiveReviewQueue() {
         </Button>
       </section>
 
+      {/* Warning message if using cached data after a fetch failure */}
       {error && hasData && (
         <p className="live-feed-warning">
           Showing the last saved results. The latest update failed.
         </p>
       )}
+      {/* Loading spinner or retry box */}
       <ApiState loading={loading} error={error} onRetry={loadRecords} />
 
       {hasData && (
         <>
+          {/* Results counter and pagination controls */}
           <div
             style={{
               display: "flex",
@@ -266,6 +297,7 @@ export default function LiveReviewQueue() {
             </div>
           </div>
 
+          {/* Table displaying filtered live domain records */}
           <section
             className="history-box"
             style={{ overflowX: "auto", padding: "0", border: "none" }}
@@ -284,6 +316,7 @@ export default function LiveReviewQueue() {
                 </tr>
               </thead>
               <tbody>
+                {/* Render each domain row */}
                 {currentRecords.length > 0 ? (
                   currentRecords.map((record) => (
                     <tr
@@ -331,6 +364,7 @@ export default function LiveReviewQueue() {
                     </tr>
                   ))
                 ) : (
+                  /* Empty state message when no records match */
                   <tr>
                     <td colSpan="8" style={{ textAlign: "center" }}>
                       {liveRecords.length === 0
