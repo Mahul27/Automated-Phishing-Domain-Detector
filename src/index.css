@@ -221,6 +221,68 @@ body {
   margin-top: 10px;
 }
 
+.live-feed-controls {
+  margin-bottom: 20px;
+}
+
+.live-feed-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.live-feed-toolbar h2 {
+  margin: 0;
+  font-size: 18px;
+  color: #0f172a;
+}
+
+.live-feed-toolbar p {
+  margin: 8px 0;
+}
+
+.live-feed-updated {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.live-feed-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.live-feed-limit {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.live-feed-limit select {
+  padding: 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #fff;
+  color: #334155;
+}
+
+.live-feed-error {
+  color: #b91c1c;
+}
+
+.live-feed-warning {
+  color: #92400e;
+}
+
+.live-feed-success {
+  color: #047857;
+}
+
 .filter-row {
   display: flex;
   gap: 10px;

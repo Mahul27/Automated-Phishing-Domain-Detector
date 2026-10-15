@@ -1,15 +1,109 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Header from "../components/Header";
-import { fetchScans } from "../Services/Client";
 import { useNavigate } from "react-router-dom";
 import Button from "../components/Button";
 import ApiState from "../components/ApiState";
 import { getRiskLevel, getRiskColor } from "../utils/risk";
+import { fetchScans } from "../Services/Client";
+
+const columns = [
+  "id",
+  "domain",
+  "tld",
+  "risk_score",
+  "prediction",
+  "review_status",
+  "decision",
+  "note",
+  "scan_time",
+  "review_date",
+];
+
+function csvCell(value) {
+  const text = String(value ?? "");
+  // Keep exported text (including analyst notes) from becoming spreadsheet formulas.
+  const safeText =
+    typeof value === "string" && /^[\s]*[=+@-]/.test(text) ? `'${text}` : text;
+  return `"${safeText.replaceAll('"', '""')}"`;
+}
+
+function buildLiveDomainsCsv(records) {
+  const rows = records.map((record) => [
+    record.id,
+    record.domain,
+    record.tld || record.domain?.split(".").pop(),
+    record.risk_score,
+    record.prediction,
+    record.review_status || "Pending",
+    record.decision,
+    record.note,
+    record.scan_time,
+    record.review_date,
+  ]);
+  // UTF-8 BOM lets spreadsheet programs detect Unicode correctly.
+  return `\uFEFF${[columns, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n")}\r\n`;
+}
+
+function downloadLiveDomainsCsv(records) {
+  const blob = new Blob([buildLiveDomainsCsv(records)], {
+    type: "text/csv;charset=utf-8",
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "live_domains.csv";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
 
 export default function LiveReviewQueue() {
   const [liveRecords, setLiveRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [hasData, setHasData] = useState(false);
+  const mounted = useRef(false);
+  const hasLoaded = useRef(false);
+  const readRequest = useRef(null);
+
+  const loadRecords = useCallback(async () => {
+    if (readRequest.current) return readRequest.current;
+
+    const request = (async () => {
+      if (mounted.current) setLoading(!hasLoaded.current);
+      try {
+        const scans = await fetchScans("live");
+        if (mounted.current) {
+          setLiveRecords(scans.records || []);
+          setError(null);
+          setHasData(true);
+          hasLoaded.current = true;
+        }
+      } catch (err) {
+        if (mounted.current)
+          setError(err.message || "Could not load live results.");
+      } finally {
+        if (mounted.current) setLoading(false);
+      }
+    })();
+
+    readRequest.current = request;
+    try {
+      return await request;
+    } finally {
+      if (readRequest.current === request) readRequest.current = null;
+    }
+  }, []);
+
+  // Read the saved snapshot on entry or an explicit error retry.
+  useEffect(() => {
+    mounted.current = true;
+    loadRecords();
+    return () => {
+      mounted.current = false;
+    };
+  }, [loadRecords]);
 
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
@@ -17,23 +111,6 @@ export default function LiveReviewQueue() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 15;
-
-  const loadRecords = async (showLoading = true) => {
-    if (showLoading) setLoading(true);
-    setError(null);
-    try {
-      const res = await fetchScans("live");
-      setLiveRecords(res.records || []);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadRecords(false);
-  }, []);
 
   const handleClearFilters = () => {
     setSearchTerm("");
@@ -74,55 +151,21 @@ export default function LiveReviewQueue() {
     return matchesSearch && matchesRisk && matchesStatus;
   });
 
-  const exportToCSV = () => {
-    const headers = [
-      "Domain ID",
-      "Domain Name",
-      "Risk Score",
-      "Prediction",
-      "Review Status",
-      "Decision",
-    ];
-    const csvRows = [headers.join(",")];
-
-    for (const record of filteredData) {
-      const values = [
-        record.id,
-        record.domain,
-        record.risk_score,
-        record.prediction,
-        record.review_status || "Pending",
-        record.decision || "-",
-      ];
-      csvRows.push(values.map((v) => `"${v}"`).join(","));
-    }
-
-    const csvString = csvRows.join("\n");
-    const blob = new Blob([csvString], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "live_queue_export.csv";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-
   const totalPages = Math.max(
     1,
     Math.ceil(filteredData.length / recordsPerPage),
   );
+  const displayPage = Math.min(currentPage, totalPages);
   const currentRecords = filteredData.slice(
-    (currentPage - 1) * recordsPerPage,
-    currentPage * recordsPerPage,
+    (displayPage - 1) * recordsPerPage,
+    displayPage * recordsPerPage,
   );
 
   return (
     <>
       <Header
         title="Live review queue"
-        subtitle="Search and review earlier detection records."
+        subtitle="Search and review domains detected by the OpenSquat live feed."
       />
 
       <section className="filter-row">
@@ -168,14 +211,24 @@ export default function LiveReviewQueue() {
         <Button variant="outline" size="small" onClick={handleClearFilters}>
           CLEAR FILTERS
         </Button>
-        <Button variant="primary" size="small" onClick={exportToCSV}>
-          EXPORT CSV
+        <Button
+          variant="primary"
+          size="small"
+          onClick={() => downloadLiveDomainsCsv(liveRecords)}
+          disabled={loading || liveRecords.length === 0}
+        >
+          EXPORT ALL CSV
         </Button>
       </section>
 
+      {error && hasData && (
+        <p className="live-feed-warning">
+          Showing the last saved results. The latest update failed.
+        </p>
+      )}
       <ApiState loading={loading} error={error} onRetry={loadRecords} />
 
-      {!loading && !error && (
+      {hasData && (
         <>
           <div
             style={{
@@ -190,22 +243,22 @@ export default function LiveReviewQueue() {
             </div>
             <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
               <span style={{ fontSize: "14px", color: "#64748b" }}>
-                Page {currentPage} of {totalPages}
+                Page {displayPage} of {totalPages}
               </span>
               <Button
                 variant="default"
                 size="small"
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={displayPage === 1}
+                onClick={() => setCurrentPage(Math.max(1, displayPage - 1))}
               >
                 Previous
               </Button>
               <Button
                 variant="default"
                 size="small"
-                disabled={currentPage === totalPages}
+                disabled={displayPage === totalPages}
                 onClick={() =>
-                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                  setCurrentPage(Math.min(totalPages, displayPage + 1))
                 }
               >
                 Next
@@ -280,7 +333,9 @@ export default function LiveReviewQueue() {
                 ) : (
                   <tr>
                     <td colSpan="8" style={{ textAlign: "center" }}>
-                      No records found matching your filters.
+                      {liveRecords.length === 0
+                        ? "No live domains have been saved yet. Use Fetch new domains to check the OpenSquat feed."
+                        : "No records found matching your filters."}
                     </td>
                   </tr>
                 )}
