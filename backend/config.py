@@ -69,11 +69,11 @@ AUTO_SCAN_ENABLED = (
 )
 
 AUTO_SCAN_INTERVAL_HOURS = float(
-    os.getenv("AUTO_SCAN_INTERVAL_HOURS", "24")
+    os.getenv("AUTO_SCAN_INTERVAL_HOURS", "1")
 )
 
 LIVE_SCAN_LIMIT = int(
-    os.getenv("LIVE_SCAN_LIMIT", "1000")
+    os.getenv("LIVE_SCAN_LIMIT", "50")
 )
 
 # ============================================================
