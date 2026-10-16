@@ -131,55 +131,28 @@ def scan_domain(
         2,
     )
 
-    # Find existing domain
-    existing = db.execute(
+    # Atomically create or reuse the shared domain row. Another scan may save
+    # the same name concurrently, so a separate SELECT then INSERT is unsafe.
+    domain_result = db.execute(
         text(
             """
-            SELECT domain_id
-            FROM domains
-            WHERE domain_name = :domain
-            LIMIT 1
+            INSERT INTO domains (domain_name)
+            VALUES (:domain)
+            ON DUPLICATE KEY UPDATE
+                domain_id = LAST_INSERT_ID(domain_id)
             """
         ),
         {
             "domain": domain
         },
-    ).first()
+    )
 
-    if existing:
-        domain_id = existing[0]
-
-    else:
-        db.execute(
-            text(
-                """
-                INSERT INTO domains
-                    (domain_name)
-                VALUES
-                    (:domain)
-                """
-            ),
-            {
-                "domain": domain
-            },
-        )
-
-        domain_id = db.execute(
-            text(
-                """
-                SELECT domain_id
-                FROM domains
-                WHERE domain_name = :domain
-                LIMIT 1
-                """
-            ),
-            {
-                "domain": domain
-            },
-        ).scalar()
+    domain_id = domain_result.lastrowid
+    if not domain_id:
+        raise RuntimeError("Could not identify the domain record.")
 
     # Save scan
-    db.execute(
+    scan_result = db.execute(
         text(
             """
             INSERT INTO scan_results
@@ -209,22 +182,10 @@ def scan_domain(
         },
     )
 
-    scan_id = db.execute(
-        text(
-            """
-            SELECT scan_id
-            FROM scan_results
-            WHERE user_id <=> :user_id
-              AND domain_id = :domain_id
-            ORDER BY scan_id DESC
-            LIMIT 1
-            """
-        ),
-        {
-            "user_id": user_id,
-            "domain_id": domain_id,
-        },
-    ).scalar()
+    # Use this INSERT's ID, rather than the latest scan from another request.
+    scan_id = scan_result.lastrowid
+    if not scan_id:
+        raise RuntimeError("Could not identify the saved scan.")
 
     # Save features
     db.execute(
