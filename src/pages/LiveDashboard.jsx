@@ -226,6 +226,50 @@ function useLiveDashboardFeed() {
   };
 }
 
+// Show activity and actual waiting time without estimating backend progress.
+function LiveFetchProgress({ limit, updating }) {
+  const [startedAt] = useState(Date.now);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setElapsedSeconds(Math.max(0, Math.floor((Date.now() - startedAt) / 1000)));
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [startedAt]);
+
+  const elapsed = `${Math.floor(elapsedSeconds / 60)}:${String(elapsedSeconds % 60).padStart(2, "0")}`;
+
+  return (
+    <div className="live-feed-progress">
+      <div className="live-feed-progress-header">
+        <p role="status" className="live-feed-progress-title">
+          {updating
+            ? "Updating dashboard results…"
+            : `Fetching and scanning up to ${limit.toLocaleString()} new domains…`}
+        </p>
+        <span className="live-feed-elapsed" aria-live="off">
+          Time elapsed: {elapsed}
+        </span>
+      </div>
+      <div
+        className="live-feed-progress-track"
+        role="progressbar"
+        aria-label={updating ? "Loading saved results" : "Fetching new domains"}
+        aria-describedby="live-feed-progress-hint"
+      >
+        <span className="live-feed-progress-indicator" />
+      </div>
+      <p id="live-feed-progress-hint" className="live-feed-progress-hint">
+        {updating
+          ? "Loading the latest saved results. Please keep this page open."
+          : "Fetching and scanning can take several minutes, especially for larger batches. Please keep this page open; your results will appear when it finishes."}
+      </p>
+    </div>
+  );
+}
+
 // Controls toolbar: pick domain count, trigger fetch, and view status
 function LiveFeedControls({ feed }) {
   // Number of domains to fetch (defaults to 10)
@@ -240,12 +284,9 @@ function LiveFeedControls({ feed }) {
   const feedback = liveFeedFeedback(result);
 
   return (
-    <section
-      className="state-box live-feed-controls"
-      aria-busy={feed.refreshing}
-    >
+    <section className="state-box live-feed-controls">
       {/* Top toolbar with count selector and fetch button */}
-      <div className="live-feed-toolbar">
+      <div className="live-feed-toolbar" aria-busy={busy}>
         <div>
           <h2>OpenSquat live domains</h2>
           <p>
@@ -278,7 +319,11 @@ function LiveFeedControls({ feed }) {
             onClick={() => feed.refresh(limit)}
             disabled={busy || unavailable || feed.loading}
           >
-            {busy ? "FETCHING DOMAINS…" : "FETCH NEW DOMAINS"}
+            {busy
+              ? result
+                ? "UPDATING RESULTS…"
+                : "FETCHING DOMAINS…"
+              : "FETCH NEW DOMAINS"}
           </Button>
         </div>
       </div>
@@ -291,14 +336,9 @@ function LiveFeedControls({ feed }) {
         </p>
       )}
       {/* Progress message shown while fetching is running */}
-      {busy && (
-        <p role="status">
-          OpenSquat is fetching the feed and scanning new domains. Larger
-          batches take longer. Keep this page open for the result.
-        </p>
-      )}
+      {busy && <LiveFetchProgress limit={limit} updating={Boolean(result)} />}
       {/* Feedback message shown after a fetch completes */}
-      {feedback && (
+      {!busy && feedback && (
         <div
           role={feedback.tone === "success" ? "status" : "alert"}
           className={`live-feed-${feedback.tone}`}

@@ -283,6 +283,76 @@ body {
   color: #047857;
 }
 
+.live-feed-progress {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  background: #eff6ff;
+}
+
+.live-feed-progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 12px;
+}
+
+.live-feed-progress-title {
+  margin: 0;
+  color: #1e3a8a;
+  font-weight: 600;
+}
+
+.live-feed-elapsed {
+  color: #475569;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.live-feed-progress-track {
+  position: relative;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #dbeafe;
+}
+
+.live-feed-progress-indicator {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 35%;
+  border-radius: inherit;
+  background: #007bff;
+  animation: live-feed-wait 1.8s ease-in-out infinite;
+}
+
+.live-feed-progress-hint {
+  margin: 10px 0 0;
+  color: #334155;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+@keyframes live-feed-wait {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(286%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-feed-progress-indicator {
+    animation: none;
+    transform: translateX(93%);
+  }
+}
+
 .filter-row {
   display: flex;
   gap: 10px;
