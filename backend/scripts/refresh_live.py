@@ -3,7 +3,11 @@
 import argparse
 
 from backend.config import LIVE_SCAN_LIMIT
-from backend.services.opensquat_service import fetch_opensquat_domains, refresh_live_domains
+from backend.services.opensquat_service import (
+    MAX_LIVE_SCAN_LIMIT,
+    fetch_opensquat_domains,
+    refresh_live_domains,
+)
 
 
 def main():
@@ -11,8 +15,8 @@ def main():
     parser.add_argument("--limit", type=int, default=LIVE_SCAN_LIMIT, help="Maximum new domains to scan")
     parser.add_argument("--source-only", action="store_true", help="List domains without scanning or saving")
     args = parser.parse_args()
-    if args.limit < 1 or args.limit > 50:
-        parser.error("--limit must be between 1 and 50")
+    if args.limit < 1 or args.limit > MAX_LIVE_SCAN_LIMIT:
+        parser.error(f"--limit must be between 1 and {MAX_LIVE_SCAN_LIMIT}")
 
     if args.source_only:
         domains = fetch_opensquat_domains()
