@@ -1,17 +1,23 @@
 
 from datetime import datetime
+import logging
 
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from backend.database import get_db, init_db
+from backend.config import LIVE_SCAN_LIMIT
 from backend.auth import CurrentUser, get_current_user
 from backend.services.dashboard_service import build_dashboard_summary
 from backend.services.model_service import model_status
-from backend.services.opensquat_service import refresh_live_domains
+from backend.services.opensquat_service import (
+    MAX_LIVE_SCAN_LIMIT,
+    opensquat_status,
+    refresh_live_domains,
+)
 from backend.services.scan_service import (
     normalise_domain,
     scan_domain,
@@ -21,6 +27,7 @@ from backend.services.import_service import parse_imported_domains
 
 
 app = FastAPI(title="Threat Hunter API", version="1.0.0")
+logger = logging.getLogger(__name__)
 
 
 # ============================================================
@@ -144,7 +151,7 @@ def health():
     return {
         "status": "healthy",
         "model": model_status(),
-        "opensquat": {"status": "enabled"},
+        "opensquat": opensquat_status(),
     }
 
 
@@ -558,11 +565,14 @@ async def import_scans(
 # ============================================================
 
 @app.post("/api/v1/opensquat/refresh")
-def refresh_opensquat():
+def refresh_opensquat(
+    limit: int = Query(default=LIVE_SCAN_LIMIT, ge=1, le=MAX_LIVE_SCAN_LIMIT),
+):
     try:
-        return refresh_live_domains()
-    except Exception as error:
+        return refresh_live_domains(limit)
+    except Exception:
+        logger.exception("Unexpected OpenSquat refresh failure")
         raise HTTPException(
             status_code=500,
-            detail=f"OpenSquat refresh failed: {error}",
+            detail="Could not refresh the OpenSquat feed. Please try again later.",
         )
