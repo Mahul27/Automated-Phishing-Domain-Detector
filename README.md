@@ -7,8 +7,9 @@ An automated cybersecurity system designed to identify newly registered and susp
 ## Implemented Features
 
 ### 1. Live Dashboard
-- **Overview Metrics**: Displays total scans, phishing detections, legitimate domains, and pending reviews.
+- **Overview Metrics**: Displays live domains monitored, high-risk alerts, pending reviews, and completed reviews.
 - **Charts**: Risk score distribution and detection breakdown powered by Recharts.
+- **OpenSquat Feed Controls**: Manually fetch and scan a chosen batch of new domains, view the last successful fetch time and feed errors, and open saved domains for review. Results stay unchanged during review until another fetch is requested.
 
 ### 2. Analyst Workspace
 - **Manual Domain Scan**: Scan any domain in real time.
@@ -16,8 +17,9 @@ An automated cybersecurity system designed to identify newly registered and susp
 - **Personal Scan History**: Searchable and filterable table of past analyst scans.
 
 ### 3. Live Review Queue
-- **Live Feed Feed**: Stream of newly identified domains from OpenSquat feeds.
+- **Live Domains**: Saved domains from manually requested OpenSquat batches.
 - **Filtering & Search**: Filter by prediction (Phishing / Legitimate) and review status (Pending / Completed).
+- **CSV Export**: Export all loaded live domains, including review status and decisions, across all pages and filters.
 
 ### 4. Detailed Scan Analysis & Human Review
 - **Risk Scoring**: Generates a 0–100 risk score and classification (Phishing vs Legitimate).
@@ -69,7 +71,7 @@ Only the technologies actually implemented in the project:
 - **Supabase Auth** - User authentication (Sign up, Login, Password Reset, session management).
 
 ### Domain Tools & Feeds
-- **OpenSquat** - CLI integration for collecting newly registered suspicious domains.
+- **[OpenSquat](https://pypi.org/project/opensquat/)** - CLI integration for collecting newly registered suspicious domains, installed with the backend requirements.
 - **tldextract** - Domain suffix and TLD parsing.
 - **RDAP & SSL Sockets** - Domain registration and certificate data extraction.
 
@@ -184,10 +186,50 @@ mysql -u <username> -p < database/Automated_Phishing_Domain_Detector_Schema.sql
 ---
 
 ### 4. Fetching Live Domains (OpenSquat)
+In the frontend, open **Live dashboard**, choose a batch
+size, and select **Fetch new domains**. The default batch is 10 new scans; the
+backend supports up to 2,000. Fetching and scanning can take several minutes.
+The page shows the number added and readable feed or scanning messages.
+An existing domain row is reused atomically so simultaneous scans cannot fail
+by inserting the same domain name. If some scans fail, the successful additions
+are kept and the page reports how many scans failed. SQL statements, database
+parameters, and exception details stay in backend logs; they are not displayed
+in the fetch controls. The refresh response includes `failed_count` and a stable
+`error_code` for these messages.
+The selected size is a maximum: fewer domains may be added if the feed has fewer
+new candidates or some scans fail. The last successful source-fetch time is saved
+in `backend/data/opensquat_state.json` and displayed in the browser's local time;
+failed refreshes preserve the previous successful time. Earlier fetches made
+before timestamp recording was added show **Not recorded yet**.
+
+Saved results load once when the dashboard or review queue opens. The dashboard
+updates after **Fetch new domains** finishes; reopen the review queue to see the
+latest saved batch. The review queue contains only review and export controls.
+There are no timed, focus, or visibility
+updates, so analysts can review a stable set of results. Starting the backend
+does not start a daily feed job.
+
+Frontend code for fetching, timestamps, and readable result messages lives in
+`src/pages/LiveDashboard.jsx`. Saved-record loading, filters, and CSV export live
+in `src/pages/LiveReviewQueue.jsx`. Both pages use the existing API client in
+`src/Services/Client.js` and styles in `src/index.css`.
+
+Select **Export all CSV** next to **Clear filters** in the live review queue to download the current saved
+snapshot, including every page and any domains hidden by queue filters. Exporting
+does not fetch new domains or reload results. Personal workspace scans are kept
+in their own collection.
+
 To pull and scan newly registered domains into the live review queue:
 ```bash
 npm run domains:refresh
 # or: .venv/bin/python -m backend.scripts.refresh_live
+# For a smaller batch:
+.venv/bin/python -m backend.scripts.refresh_live --limit 10
+```
+
+To check the feed without scanning or saving domains:
+```bash
+npm run domains:check
 ```
 
 ---

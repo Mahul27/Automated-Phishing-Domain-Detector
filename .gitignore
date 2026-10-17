@@ -23,6 +23,8 @@ __pycache__/
 *.pyc
 backend/data/scans.db*
 backend/data/feature_cache.json
+backend/data/opensquat_state.json
+backend/data/opensquat_state.json.*.tmp
 # OpenSquat may leave a downloaded source feed in its working directory.
 backend/opensquat-nrd-latest.txt
 
