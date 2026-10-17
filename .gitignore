@@ -38,3 +38,14 @@ backend/opensquat-nrd-latest.txt
 *.njsproj
 *.sln
 *.sw?
+
+# OpenSquat runtime state
+backend/data/opensquat_state.json
+
+# Experimental ML models
+backend/models/candidate_xgboost_model.json
+
+backend/models/model_comparison.json
+
+# Local model evaluation reports
+models/same_test_model_comparison.json
