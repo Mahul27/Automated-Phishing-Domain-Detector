@@ -1,3 +1,4 @@
+
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from collections import Counter
@@ -23,16 +24,13 @@ BRANDS_FILE = DATA_DIR / "brands_keywords.txt"
 CACHE_FILE = DATA_DIR / "feature_cache.json"
 
 REQUEST_TIMEOUT = 5
-
-# Limited retries for temporary network failures.
 MAX_RETRIES = 2
 RETRY_DELAY_SECONDS = 1.5
-
-# Cache freshness.
-RDAP_CACHE_TTL = timedelta(days=7)
-SSL_CACHE_TTL = timedelta(days=1)
-
 HTTPS_PORT = 443
+
+RDAP_CACHE_TTL = timedelta(days=7)
+WHOIS_CACHE_TTL = timedelta(days=7)
+SSL_CACHE_TTL = timedelta(days=1)
 
 
 # ============================================================
@@ -40,81 +38,100 @@ HTTPS_PORT = 443
 # ============================================================
 
 def load_cache():
-    """Load the persistent feature cache."""
+    default_cache = {
+        "rdap": {},
+        "whois": {},
+        "ssl": {},
+    }
 
     if not CACHE_FILE.exists():
-        return {
-            "rdap": {},
-            "ssl": {}
-        }
+        return default_cache
 
     try:
         with CACHE_FILE.open("r", encoding="utf-8") as file:
             cache = json.load(file)
 
-        cache.setdefault("rdap", {})
-        cache.setdefault("ssl", {})
+        for key in default_cache:
+            if not isinstance(cache.get(key), dict):
+                cache[key] = {}
 
         return cache
 
     except (json.JSONDecodeError, OSError):
-        print("Feature cache could not be read. Starting with empty cache.")
-
-        return {
-            "rdap": {},
-            "ssl": {}
-        }
+        print("Feature cache could not be read; starting empty.")
+        return default_cache
 
 
 def save_cache(cache):
-    """Save the persistent feature cache safely."""
-
     CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
-
     temporary_file = CACHE_FILE.with_suffix(".tmp")
 
-    with temporary_file.open("w", encoding="utf-8") as file:
-        json.dump(cache, file, indent=2)
+    try:
+        with temporary_file.open("w", encoding="utf-8") as file:
+            json.dump(cache, file, indent=2)
 
-    temporary_file.replace(CACHE_FILE)
+        temporary_file.replace(CACHE_FILE)
+
+    except OSError as error:
+        print(f"Could not save feature cache: {error}")
+
+        try:
+            temporary_file.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 CACHE = load_cache()
 
 
 def utc_now():
-    """Return the current UTC time."""
-
     return datetime.now(timezone.utc)
 
 
 def parse_iso_datetime(value):
-    """Convert an ISO timestamp into a timezone-aware datetime."""
-
     if not value:
         return None
 
     try:
-        parsed = datetime.fromisoformat(value)
+        parsed = datetime.fromisoformat(
+            str(value).replace("Z", "+00:00")
+        )
 
         if parsed.tzinfo is None:
             parsed = parsed.replace(tzinfo=timezone.utc)
 
         return parsed.astimezone(timezone.utc)
 
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, OverflowError):
         return None
 
 
 def is_cache_fresh(timestamp, ttl):
-    """Check whether cached information is still fresh."""
-
     cached_time = parse_iso_datetime(timestamp)
 
     if cached_time is None:
         return False
 
-    return utc_now() - cached_time < ttl
+    age = utc_now() - cached_time
+
+    return timedelta(0) <= age < ttl
+
+
+def normalise_source(source):
+    return (
+        str(source or "")
+        .strip()
+        .lower()
+        .replace("-", "_")
+        .replace(" ", "_")
+    )
+
+
+def is_manual_source(source):
+    return normalise_source(source) in {
+        "manual",
+        "manual_scan",
+    }
 
 
 # ============================================================
@@ -122,64 +139,131 @@ def is_cache_fresh(timestamp, ttl):
 # ============================================================
 
 def load_brand_keywords():
-    """Load brand keywords from brands_keywords.txt."""
-
     if not BRANDS_FILE.exists():
         print(f"Brand keyword file not found: {BRANDS_FILE}")
         return []
 
-    with BRANDS_FILE.open("r", encoding="utf-8") as file:
-        return [
-            line.strip().lower()
-            for line in file
-            if line.strip()
-        ]
+    try:
+        with BRANDS_FILE.open("r", encoding="utf-8") as file:
+            return [
+                line.strip().lower()
+                for line in file
+                if line.strip()
+            ]
+
+    except OSError as error:
+        print(f"Could not load brand keywords: {error}")
+        return []
 
 
 BRAND_KEYWORDS = load_brand_keywords()
 
 
 # ============================================================
-# Domain parsing helpers
+# Domain parsing
 # ============================================================
 
-def get_extracted_domain(domain):
-    """Extract the domain using tldextract."""
+def get_hostname(domain):
+    value = str(domain).strip()
 
-    return tldextract.extract(domain)
+    if "://" in value:
+        value = value.split("://", 1)[1]
+
+    value = value.split("/", 1)[0]
+    value = value.split("?", 1)[0]
+    value = value.split("#", 1)[0]
+
+    if value.count(":") == 1:
+        value = value.rsplit(":", 1)[0]
+
+    return value.rstrip(".").lower()
+
+
+def get_extracted_domain(domain):
+    return tldextract.extract(get_hostname(domain))
 
 
 def get_main_domain(domain):
-    """Return the main domain without the TLD."""
-
-    extracted = get_extracted_domain(domain)
-
-    return extracted.domain
+    return get_extracted_domain(domain).domain
 
 
 def get_registrable_domain(domain):
-    """Return the registrable domain including the TLD."""
-
     extracted = get_extracted_domain(domain)
 
-    if extracted.suffix:
+    if extracted.domain and extracted.suffix:
         return f"{extracted.domain}.{extracted.suffix}"
 
     return extracted.domain
 
 
-def get_hostname(domain):
-    """Return a hostname suitable for network connections."""
+# ============================================================
+# Date helpers
+# ============================================================
 
-    domain = domain.strip()
+def parse_whois_datetime(value):
+    if value is None:
+        return None
 
-    if "://" in domain:
-        domain = domain.split("://", 1)[1]
+    if isinstance(value, (list, tuple, set)):
+        dates = [
+            parse_whois_datetime(item)
+            for item in value
+        ]
 
-    domain = domain.split("/", 1)[0]
-    domain = domain.split(":", 1)[0]
+        dates = [
+            item for item in dates
+            if item is not None
+        ]
 
-    return domain.lower().strip()
+        return min(dates) if dates else None
+
+    if isinstance(value, datetime):
+        parsed = value
+
+    else:
+        text_value = str(value).strip()
+
+        try:
+            parsed = datetime.fromisoformat(
+                text_value.replace("Z", "+00:00")
+            )
+
+        except (ValueError, TypeError, OverflowError):
+            parsed = None
+
+            for date_format in (
+                "%Y-%m-%d",
+                "%Y/%m/%d",
+                "%d-%b-%Y",
+                "%Y.%m.%d",
+            ):
+                try:
+                    parsed = datetime.strptime(
+                        text_value,
+                        date_format,
+                    )
+                    break
+
+                except ValueError:
+                    continue
+
+            if parsed is None:
+                return None
+
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+
+    return parsed.astimezone(timezone.utc)
+
+
+def calculate_age_from_registration_date(registration_date):
+    if not registration_date:
+        return None
+
+    return max(
+        (utc_now() - registration_date).days,
+        0,
+    )
 
 
 # ============================================================
@@ -187,63 +271,63 @@ def get_hostname(domain):
 # ============================================================
 
 def calculate_domain_age(rdap_data):
-    """
-    Calculate domain age in days from the RDAP registration date.
-    """
-
     if not rdap_data:
         return None
 
-    registration_date = rdap_data.get("registration")
-
-    if not registration_date:
-        return None
-
-    age = utc_now() - registration_date
-
-    return max(age.days, 0)
+    return calculate_age_from_registration_date(
+        rdap_data.get("registration")
+    )
 
 
 # ============================================================
 # Feature 2 — Registration Period
 # ============================================================
 
-def calculate_registration_period(rdap_data):
+def calculate_registration_period(registration_data):
     """
-    Calculate registration period as:
+    Calculate registration period in days.
 
-    expiration date - registration date
+    Registration period = expiry date - registration date.
+
+    The caller selects WHOIS or RDAP based on scan source.
     """
 
-    if not rdap_data:
+    if not registration_data:
         return None
 
-    registration_date = rdap_data.get("registration")
-    expiration_date = rdap_data.get("expiration")
+    registration_date = registration_data.get("registration")
+    expiration_date = registration_data.get("expiration")
 
     if not registration_date or not expiration_date:
         return None
 
-    return max(
-        (expiration_date - registration_date).days,
-        0
-    )
+    if not isinstance(registration_date, datetime):
+        registration_date = parse_whois_datetime(
+            registration_date
+        )
+
+    if not isinstance(expiration_date, datetime):
+        expiration_date = parse_whois_datetime(
+            expiration_date
+        )
+
+    if not registration_date or not expiration_date:
+        return None
+
+    if expiration_date < registration_date:
+        return None
+
+    return (expiration_date - registration_date).days
 
 
 # ============================================================
-# IANA RDAP bootstrap
+# RDAP bootstrap
 # ============================================================
 
 _RDAP_SERVERS = None
 
 
 def get_rdap_servers():
-    """
-    Load the IANA RDAP bootstrap once per program run.
-
-    This prevents downloading the bootstrap file for every domain.
-    """
-
     global _RDAP_SERVERS
 
     if _RDAP_SERVERS is not None:
@@ -252,298 +336,407 @@ def get_rdap_servers():
     url = "https://data.iana.org/rdap/dns.json"
 
     for attempt in range(MAX_RETRIES + 1):
-
         try:
-
             response = requests.get(
                 url,
                 timeout=REQUEST_TIMEOUT,
                 headers={
-                    "User-Agent": "ThreatHunter-Capstone/1.0"
-                }
+                    "User-Agent": "ThreatHunter-Capstone/1.0",
+                },
             )
 
             response.raise_for_status()
-
             data = response.json()
 
             servers = {}
 
             for service in data.get("services", []):
-
                 if len(service) < 2:
                     continue
 
-                tlds = service[0]
-                urls = service[1]
+                tlds, urls = service[0], service[1]
+
+                if not urls:
+                    continue
 
                 for tld in tlds:
-
-                    servers[tld.lower()] = urls[0]
+                    servers[str(tld).lower()] = urls[0]
 
             _RDAP_SERVERS = servers
-
             return _RDAP_SERVERS
 
-        except (
-            requests.RequestException,
-            ValueError
-        ) as error:
-
+        except (requests.RequestException, ValueError) as error:
             if attempt < MAX_RETRIES:
-
-                time.sleep(
-                    RETRY_DELAY_SECONDS
-                )
+                time.sleep(RETRY_DELAY_SECONDS)
 
             else:
-
                 print(
                     f"Could not load IANA RDAP bootstrap: {error}"
                 )
 
     _RDAP_SERVERS = {}
-
     return _RDAP_SERVERS
 
 
 def get_authoritative_rdap_url(domain):
-    """Find the authoritative RDAP server for the domain TLD."""
-
-    extracted = get_extracted_domain(domain)
-
-    tld = extracted.suffix.lower()
+    tld = get_extracted_domain(domain).suffix.lower()
 
     if not tld:
         return None
 
-    servers = get_rdap_servers()
-
-    return servers.get(tld)
+    return get_rdap_servers().get(tld)
 
 
 # ============================================================
-# RDAP
+# RDAP response parsing
 # ============================================================
 
 def parse_rdap_events(data):
-    """Extract registration and expiration dates from RDAP."""
-
     registration = None
     expiration = None
 
     for event in data.get("events", []):
+        action = str(
+            event.get("eventAction", "")
+        ).lower()
 
-        event_action = event.get("eventAction")
-        event_date = event.get("eventDate")
+        event_date = parse_iso_datetime(
+            event.get("eventDate")
+        )
 
         if not event_date:
             continue
 
-        parsed_date = parse_iso_datetime(event_date)
+        if action == "registration":
+            registration = event_date
 
-        if not parsed_date:
-            continue
-
-        if event_action == "registration":
-            registration = parsed_date
-
-        elif event_action == "expiration":
-            expiration = parsed_date
+        elif action == "expiration":
+            expiration = event_date
 
     return {
         "registration": registration,
-        "expiration": expiration
+        "expiration": expiration,
     }
 
 
+# ============================================================
+# RDAP lookup
+# Automated/OpenSquat scans use RDAP only.
+# ============================================================
+
 def get_rdap_data(domain):
-    """
-    Get RDAP registration information.
-
-    One successful RDAP lookup provides both:
-
-    - Domain Age
-    - Registration Period
-
-    Successful results are cached for seven days.
-    """
-
     domain = get_registrable_domain(domain)
+
+    if not domain:
+        return None
 
     cached = CACHE["rdap"].get(domain)
 
     if cached and is_cache_fresh(
         cached.get("checked_at"),
-        RDAP_CACHE_TTL
+        RDAP_CACHE_TTL,
     ):
-
         return {
             "registration": parse_iso_datetime(
                 cached.get("registration")
             ),
             "expiration": parse_iso_datetime(
                 cached.get("expiration")
-            )
+            ),
         }
 
     rdap_base_url = get_authoritative_rdap_url(domain)
 
     if not rdap_base_url:
-
-        tld = get_extracted_domain(domain).suffix
-
-        print(
-            f"No RDAP server found for .{tld}"
-        )
+        print(f"No RDAP server found for {domain}")
 
         CACHE["rdap"][domain] = {
             "checked_at": utc_now().isoformat(),
             "registration": None,
             "expiration": None,
-            "status": "no_rdap_server"
+            "status": "no_rdap_server",
         }
 
         save_cache(CACHE)
-
         return None
 
-    url = (
-        f"{rdap_base_url.rstrip('/')}"
-        f"/domain/{domain}"
-    )
+    url = f"{rdap_base_url.rstrip('/')}/domain/{domain}"
 
     for attempt in range(MAX_RETRIES + 1):
-
         try:
-
             response = requests.get(
                 url,
                 timeout=REQUEST_TIMEOUT,
                 headers={
                     "Accept": (
-                        "application/rdap+json, "
-                        "application/json"
+                        "application/rdap+json, application/json"
                     ),
-                    "User-Agent": (
-                        "ThreatHunter-Capstone/1.0"
-                    )
-                }
+                    "User-Agent": "ThreatHunter-Capstone/1.0",
+                },
             )
 
             response.raise_for_status()
-
-            data = response.json()
-
-            dates = parse_rdap_events(data)
+            dates = parse_rdap_events(response.json())
 
             CACHE["rdap"][domain] = {
                 "checked_at": utc_now().isoformat(),
-
                 "registration": (
                     dates["registration"].isoformat()
-                    if dates["registration"]
-                    else None
+                    if dates["registration"] else None
                 ),
-
                 "expiration": (
                     dates["expiration"].isoformat()
-                    if dates["expiration"]
-                    else None
+                    if dates["expiration"] else None
                 ),
-
-                "status": "success"
+                "status": "success",
             }
 
             save_cache(CACHE)
-
             return dates
 
-        except requests.Timeout:
-
+        except requests.Timeout as error:
             if attempt < MAX_RETRIES:
-
-                time.sleep(
-                    RETRY_DELAY_SECONDS
-                )
-
+                time.sleep(RETRY_DELAY_SECONDS)
                 continue
 
-            print(
-                f"RDAP request timed out for {domain}"
-            )
+            print(f"RDAP timed out for {domain}: {error}")
 
         except requests.ConnectionError as error:
-
             if attempt < MAX_RETRIES:
-
-                time.sleep(
-                    RETRY_DELAY_SECONDS
-                )
-
+                time.sleep(RETRY_DELAY_SECONDS)
                 continue
 
-            print(
-                f"RDAP connection failed for "
-                f"{domain}: {error}"
-            )
+            print(f"RDAP connection failed for {domain}: {error}")
 
         except requests.HTTPError as error:
-
             status_code = (
                 error.response.status_code
-                if error.response is not None
-                else None
+                if error.response is not None else None
             )
 
-            # Retry only temporary server/rate-limit errors.
-            if status_code in {
-                429,
-                500,
-                502,
-                503,
-                504
-            }:
+            if (
+                status_code in {429, 500, 502, 503, 504}
+                and attempt < MAX_RETRIES
+            ):
+                time.sleep(RETRY_DELAY_SECONDS)
+                continue
 
-                if attempt < MAX_RETRIES:
-
-                    time.sleep(
-                        RETRY_DELAY_SECONDS
-                    )
-
-                    continue
-
-            print(
-                f"RDAP request failed for "
-                f"{domain}: {error}"
-            )
-
+            print(f"RDAP request failed for {domain}: {error}")
             break
 
-        except (
-            ValueError,
-            requests.RequestException
-        ) as error:
-
-            print(
-                f"RDAP request failed for "
-                f"{domain}: {error}"
-            )
-
+        except (ValueError, requests.RequestException) as error:
+            print(f"RDAP request failed for {domain}: {error}")
             break
 
-    # Cache failed result temporarily so that the same
-    # unavailable domain is not repeatedly queried.
     CACHE["rdap"][domain] = {
         "checked_at": utc_now().isoformat(),
         "registration": None,
         "expiration": None,
-        "status": "failed"
+        "status": "failed",
     }
 
     save_cache(CACHE)
-
     return None
+
+
+# ============================================================
+# WHOIS lookup
+# Manual scans: WHOIS first, RDAP expiry fallback only.
+# ============================================================
+
+def get_whois_data(domain, source):
+    """
+    For manual scans:
+    1. Use WHOIS for registration and expiry dates.
+    2. If WHOIS has no expiry date, use RDAP only for expiry.
+    3. Never replace the WHOIS registration date with RDAP.
+    """
+
+    if not is_manual_source(source):
+        return None
+
+    domain = get_registrable_domain(domain)
+
+    if not domain:
+        return None
+
+    cached = CACHE["whois"].get(domain)
+
+    registration_date = None
+    expiration_date = None
+
+    # Reuse cache if it contains both dates.
+    if cached and is_cache_fresh(
+        cached.get("checked_at"),
+        WHOIS_CACHE_TTL,
+    ):
+        registration_date = parse_iso_datetime(
+            cached.get("registration")
+        )
+
+        expiration_date = parse_iso_datetime(
+            cached.get("expiration")
+        )
+
+        # An older cache entry may not contain an expiration key.
+        if (
+            "expiration" in cached
+            and expiration_date is not None
+        ):
+            return {
+                "registration": registration_date,
+                "expiration": expiration_date,
+            }
+
+    # Refresh WHOIS when expiry is missing or the cache is outdated.
+    try:
+        import whois
+
+    except ImportError:
+        whois = None
+        print(
+            "WHOIS dependency missing. Install with "
+            "'python -m pip install python-whois'."
+        )
+
+    if whois is not None:
+        try:
+            try:
+                result = whois.whois(
+                    domain,
+                    timeout=REQUEST_TIMEOUT,
+                )
+
+            except TypeError:
+                result = whois.whois(domain)
+
+            new_registration = parse_whois_datetime(
+                getattr(result, "creation_date", None)
+            )
+
+            new_expiration = parse_whois_datetime(
+                getattr(result, "expiration_date", None)
+            )
+
+            # Keep an existing valid registration date if the
+            # refreshed WHOIS response does not include one.
+            if new_registration is not None:
+                registration_date = new_registration
+
+            if new_expiration is not None:
+                expiration_date = new_expiration
+
+            CACHE["whois"][domain] = {
+                "checked_at": utc_now().isoformat(),
+                "registration": (
+                    registration_date.isoformat()
+                    if registration_date else None
+                ),
+                "expiration": (
+                    expiration_date.isoformat()
+                    if expiration_date else None
+                ),
+                "status": (
+                    "success"
+                    if registration_date or expiration_date
+                    else "no_date"
+                ),
+            }
+
+            save_cache(CACHE)
+
+        except Exception as error:
+            print(f"WHOIS lookup failed for {domain}: {error}")
+
+    # RDAP is only a fallback for a missing WHOIS expiry date.
+    if expiration_date is None:
+        print(
+            f"WHOIS expiry unavailable for {domain}; "
+            "trying RDAP for expiry only."
+        )
+
+        try:
+            rdap_data = get_rdap_data(domain)
+
+            rdap_expiration = (
+                rdap_data.get("expiration")
+                if rdap_data else None
+            )
+
+            if rdap_expiration is not None:
+                expiration_date = rdap_expiration
+
+                print(
+                    f"RDAP fallback expiry for {domain}: "
+                    f"{expiration_date}"
+                )
+
+            else:
+                print(
+                    f"RDAP did not provide an expiry date for {domain}."
+                )
+
+        except Exception as error:
+            print(
+                f"RDAP expiry fallback failed for {domain}: {error}"
+            )
+
+        # Save the WHOIS registration date and the expiry obtained
+        # from WHOIS or RDAP. RDAP registration is not substituted.
+        CACHE["whois"][domain] = {
+            "checked_at": utc_now().isoformat(),
+            "registration": (
+                registration_date.isoformat()
+                if registration_date else None
+            ),
+            "expiration": (
+                expiration_date.isoformat()
+                if expiration_date else None
+            ),
+            "status": (
+                "success"
+                if registration_date or expiration_date
+                else "no_date"
+            ),
+            "expiry_source": (
+                "rdap_fallback"
+                if expiration_date else None
+            ),
+        }
+
+        save_cache(CACHE)
+
+    return {
+        "registration": registration_date,
+        "expiration": expiration_date,
+    }
+
+
+# ============================================================
+# Registration date display metadata
+# Only manual .nz scans display this date.
+# ============================================================
+
+def get_registration_metadata(domain, source):
+    extracted = get_extracted_domain(domain)
+
+    if (
+        not is_manual_source(source)
+        or extracted.suffix.lower() != "nz"
+    ):
+        return None
+
+    whois_data = get_whois_data(domain, source)
+
+    if not whois_data:
+        return None
+
+    registration_date = whois_data.get("registration")
+
+    if not registration_date:
+        return None
+
+    return registration_date.date().isoformat()
 
 
 # ============================================================
@@ -551,15 +744,7 @@ def get_rdap_data(domain):
 # ============================================================
 
 def calculate_domain_length(domain):
-    """
-    Return the length of the main domain.
-
-    This follows the original feature definition.
-    """
-
-    extracted = get_extracted_domain(domain)
-
-    return len(extracted.domain)
+    return len(get_extracted_domain(domain).domain)
 
 
 # ============================================================
@@ -567,15 +752,7 @@ def calculate_domain_length(domain):
 # ============================================================
 
 def calculate_num_hyphens(domain):
-    """
-    Count hyphens in the hostname.
-
-    This follows the original feature definition.
-    """
-
-    hostname = get_hostname(domain)
-
-    return hostname.count("-")
+    return get_hostname(domain).count("-")
 
 
 # ============================================================
@@ -583,17 +760,11 @@ def calculate_num_hyphens(domain):
 # ============================================================
 
 def calculate_num_digits(domain):
-    """
-    Count digits in the main domain.
-
-    This follows the original feature definition.
-    """
-
-    extracted = get_extracted_domain(domain)
+    main_domain = get_extracted_domain(domain).domain
 
     return sum(
         character.isdigit()
-        for character in extracted.domain
+        for character in main_domain
     )
 
 
@@ -602,35 +773,18 @@ def calculate_num_digits(domain):
 # ============================================================
 
 def calculate_entropy(domain):
-    """
-    Calculate Shannon entropy of the main domain.
+    main_domain = get_extracted_domain(domain).domain
 
-    This follows the original feature definition.
-    """
-
-    extracted = get_extracted_domain(domain)
-
-    domain_name = extracted.domain
-
-    if not domain_name:
+    if not main_domain:
         return 0.0
 
-    counts = Counter(domain_name)
+    counts = Counter(main_domain)
+    length = len(main_domain)
 
-    length = len(domain_name)
-
-    entropy = 0.0
-
-    for count in counts.values():
-
-        probability = count / length
-
-        entropy -= (
-            probability *
-            math.log2(probability)
-        )
-
-    return entropy
+    return -sum(
+        (count / length) * math.log2(count / length)
+        for count in counts.values()
+    )
 
 
 # ============================================================
@@ -638,23 +792,14 @@ def calculate_entropy(domain):
 # ============================================================
 
 def calculate_brand_keyword(domain):
-    """
-    Detect whether a configured brand keyword occurs
-    inside the main domain.
+    main_domain = get_extracted_domain(domain).domain.lower()
 
-    This follows the original feature definition.
-    """
-
-    extracted = get_extracted_domain(domain)
-
-    domain_name = extracted.domain.lower()
-
-    for brand in BRAND_KEYWORDS:
-
-        if brand in domain_name:
-            return 1
-
-    return 0
+    return int(
+        any(
+            brand in main_domain
+            for brand in BRAND_KEYWORDS
+        )
+    )
 
 
 # ============================================================
@@ -662,67 +807,38 @@ def calculate_brand_keyword(domain):
 # ============================================================
 
 def calculate_typosquatting_score(domain):
-    """
-    Calculate the maximum similarity against configured brands.
+    main_domain = get_extracted_domain(domain).domain.lower()
 
-    IMPORTANT:
-    This preserves the original teammate implementation.
-
-    If the domain is shorter than the brand, the complete
-    domain is still compared against that brand.
-
-    Example:
-
-        domain = googl
-        brand  = google
-
-    The comparison is:
-
-        googl <-> google
-
-    rather than skipping the comparison.
-    """
-
-    extracted = get_extracted_domain(domain)
-
-    domain_name = extracted.domain.lower()
-
-    if not domain_name:
+    if not main_domain:
         return 0.0
 
     best_score = 0.0
 
     for brand in BRAND_KEYWORDS:
+        if not brand:
+            continue
 
         brand_length = len(brand)
 
-        if len(domain_name) < brand_length:
-
-            windows = [
-                domain_name
-            ]
+        if len(main_domain) < brand_length:
+            windows = [main_domain]
 
         else:
-
             windows = [
-                domain_name[i:i + brand_length]
+                main_domain[i:i + brand_length]
                 for i in range(
-                    len(domain_name) -
-                    brand_length +
-                    1
+                    len(main_domain) - brand_length + 1
                 )
             ]
 
         for window in windows:
-
             score = SequenceMatcher(
                 None,
                 window,
-                brand
+                brand,
             ).ratio()
 
-            if score > best_score:
-                best_score = score
+            best_score = max(best_score, score)
 
     return round(best_score, 3)
 
@@ -732,23 +848,13 @@ def calculate_typosquatting_score(domain):
 # ============================================================
 
 def get_ssl_certificate_date(domain):
-    """
-    Retrieve the certificate notBefore date.
-
-    The connection is made directly to the domain on port 443.
-
-    Successful certificate dates are cached for 24 hours.
-    """
-
     hostname = get_hostname(domain)
-
     cached = CACHE["ssl"].get(hostname)
 
     if cached and is_cache_fresh(
         cached.get("checked_at"),
-        SSL_CACHE_TTL
+        SSL_CACHE_TTL,
     ):
-
         return parse_iso_datetime(
             cached.get("not_before")
         )
@@ -756,116 +862,83 @@ def get_ssl_certificate_date(domain):
     context = ssl.create_default_context()
 
     for attempt in range(MAX_RETRIES + 1):
-
         try:
-
             with socket.create_connection(
                 (hostname, HTTPS_PORT),
-                timeout=REQUEST_TIMEOUT
+                timeout=REQUEST_TIMEOUT,
             ) as sock:
 
                 with context.wrap_socket(
                     sock,
-                    server_hostname=hostname
+                    server_hostname=hostname,
                 ) as secure_socket:
 
-                    certificate = (
-                        secure_socket.getpeercert()
-                    )
-
-                    not_before = (
-                        certificate.get("notBefore")
-                    )
+                    certificate = secure_socket.getpeercert()
+                    not_before = certificate.get("notBefore")
 
                     if not not_before:
-
                         raise ValueError(
-                            "Certificate has no "
-                            "notBefore field"
+                            "Certificate has no notBefore field"
                         )
 
-                    certificate_date = (
-                        datetime.strptime(
-                            not_before,
-                            "%b %d %H:%M:%S %Y %Z"
-                        ).replace(
-                            tzinfo=timezone.utc
-                        )
-                    )
+                    certificate_date = datetime.strptime(
+                        not_before,
+                        "%b %d %H:%M:%S %Y %Z",
+                    ).replace(tzinfo=timezone.utc)
 
                     CACHE["ssl"][hostname] = {
-                        "checked_at": (
-                            utc_now().isoformat()
-                        ),
-                        "not_before": (
-                            certificate_date.isoformat()
-                        ),
-                        "status": "success"
+                        "checked_at": utc_now().isoformat(),
+                        "not_before": certificate_date.isoformat(),
+                        "status": "success",
                     }
 
                     save_cache(CACHE)
-
                     return certificate_date
 
         except (
             socket.timeout,
             TimeoutError,
-            ConnectionError
+            ConnectionError,
         ) as error:
 
             if attempt < MAX_RETRIES:
-
-                time.sleep(
-                    RETRY_DELAY_SECONDS
-                )
-
+                time.sleep(RETRY_DELAY_SECONDS)
                 continue
 
             print(
-                f"{hostname}: "
-                f"SSL connection failed: {error}"
+                f"SSL connection failed for {hostname}: {error}"
             )
 
         except (
             socket.gaierror,
             ssl.SSLError,
             OSError,
-            ValueError
+            ValueError,
         ) as error:
 
-            print(
-                f"{hostname}: "
-                f"SSL connection failed: {error}"
-            )
-
+            print(f"SSL lookup failed for {hostname}: {error}")
             break
 
-    # Cache the failure for 24 hours so an unavailable
-    # HTTPS service is not repeatedly contacted.
     CACHE["ssl"][hostname] = {
         "checked_at": utc_now().isoformat(),
         "not_before": None,
-        "status": "failed"
+        "status": "failed",
     }
 
     save_cache(CACHE)
-
     return None
 
 
 def calculate_ssl_certificate_age(domain):
-    """Calculate SSL certificate age in days."""
-
-    certificate_date = (
-        get_ssl_certificate_date(domain)
-    )
+    certificate_date = get_ssl_certificate_date(domain)
 
     if not certificate_date:
         return None
 
-    age = utc_now() - certificate_date
-
-    return max(age.days, 0)
+    return max(
+        (utc_now() - certificate_date).days,
+        0,
+    )
 
 
 # ============================================================
@@ -873,95 +946,95 @@ def calculate_ssl_certificate_age(domain):
 # ============================================================
 
 def calculate_tld(domain):
-    """
-    Return the domain suffix.
-
-    This follows the original feature definition.
-    """
-
-    extracted = get_extracted_domain(domain)
-
-    return extracted.suffix
+    return get_extracted_domain(domain).suffix
 
 
 # ============================================================
 # Main Feature Extraction
 # ============================================================
 
-def extract_features(domain):
+def extract_features(domain, source=None):
     """
-    Extract the final 10 features for one domain.
+    Manual scans:
+      - WHOIS is the primary source.
+      - RDAP supplies only a missing expiry date.
 
-    Network behaviour:
+    Automated/OpenSquat scans:
+      - RDAP only.
 
-    - Local features are calculated first.
-    - One RDAP lookup provides both RDAP-based features.
-    - RDAP information is cached.
-    - SSL certificate dates are cached.
-    - Temporary failures receive limited retries.
-    - Permanent failures return None.
+    The original ten model feature names remain unchanged.
     """
 
-    print(
-        f"\nExtracting features for: {domain}"
-    )
+    print(f"\nExtracting features for: {domain}")
 
-    # --------------------------------------------------------
     # Local features
-    # --------------------------------------------------------
-
-    domain_length = (
-        calculate_domain_length(domain)
-    )
-
-    num_hyphens = (
-        calculate_num_hyphens(domain)
-    )
-
-    num_digits = (
-        calculate_num_digits(domain)
-    )
-
-    entropy_domain = (
-        calculate_entropy(domain)
-    )
-
-    brand_keyword = (
-        calculate_brand_keyword(domain)
-    )
-
-    typosquatting_score = (
-        calculate_typosquatting_score(domain)
-    )
-
+    domain_length = calculate_domain_length(domain)
+    num_hyphens = calculate_num_hyphens(domain)
+    num_digits = calculate_num_digits(domain)
+    entropy_domain = calculate_entropy(domain)
+    brand_keyword = calculate_brand_keyword(domain)
+    typosquatting_score = calculate_typosquatting_score(domain)
     tld = calculate_tld(domain)
 
-    # --------------------------------------------------------
-    # RDAP
-    # --------------------------------------------------------
+    # Registration features
+    if is_manual_source(source):
+        registration_data = get_whois_data(domain, source)
 
-    rdap_data = get_rdap_data(domain)
+        domain_age = calculate_age_from_registration_date(
+            registration_data.get("registration")
+            if registration_data else None
+        )
 
-    domain_age = (
-        calculate_domain_age(rdap_data)
-    )
+        registration_period = calculate_registration_period(
+            registration_data
+        )
 
-    registration_period = (
-        calculate_registration_period(rdap_data)
-    )
+        # Diagnostic output
+        print("SCAN SOURCE:", source)
 
-    # --------------------------------------------------------
-    # SSL
-    # --------------------------------------------------------
+        print(
+            "WHOIS REGISTRATION:",
+            registration_data.get("registration")
+            if registration_data else None,
+        )
 
-    ssl_certificate_age = (
-        calculate_ssl_certificate_age(domain)
-    )
+        print(
+            "WHOIS EXPIRATION:",
+            registration_data.get("expiration")
+            if registration_data else None,
+        )
 
-    # --------------------------------------------------------
-    # Final 10 features
-    # --------------------------------------------------------
+        print("REGISTRATION PERIOD:", registration_period)
 
+    else:
+        registration_data = get_rdap_data(domain)
+
+        domain_age = calculate_domain_age(registration_data)
+
+        registration_period = calculate_registration_period(
+            registration_data
+        )
+
+        print("SCAN SOURCE:", source)
+
+        print(
+            "RDAP REGISTRATION:",
+            registration_data.get("registration")
+            if registration_data else None,
+        )
+
+        print(
+            "RDAP EXPIRATION:",
+            registration_data.get("expiration")
+            if registration_data else None,
+        )
+
+        print("REGISTRATION PERIOD:", registration_period)
+
+    # SSL feature
+    ssl_certificate_age = calculate_ssl_certificate_age(domain)
+
+    # Keep all ten original ML feature names unchanged.
     return {
         "domain_age_days": domain_age,
         "registration_period_days": registration_period,
@@ -972,7 +1045,7 @@ def extract_features(domain):
         "brand_keyword": brand_keyword,
         "typosquatting_score": typosquatting_score,
         "ssl_certificate_age_days": ssl_certificate_age,
-        "tld": tld
+        "tld": tld,
     }
 
 
@@ -981,17 +1054,12 @@ def extract_features(domain):
 # ============================================================
 
 if __name__ == "__main__":
-
-    test_domain = "example.com"
-
     features = extract_features(
-        test_domain
+        "www.anz.co.nz",
+        source="manual",
     )
 
     print("\nFeature results:")
 
     for feature, value in features.items():
-
-        print(
-            f"{feature}: {value}"
-        )
+        print(f"{feature}: {value}")
