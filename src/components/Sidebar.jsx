@@ -1,11 +1,20 @@
 // This is the sidebar navigation bar on the left side of the screen.
 // It contains links to all major sections of the application and a Sign Out button.
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { supabase } from "../utils/supabase";
+import { useEffect, useRef, useState } from "react";
+import { clearPasswordRecovery, supabase } from "../utils/supabase";
 
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [signingOut, setSigningOut] = useState(false);
+  const [error, setError] = useState("");
+  const pending = useRef(false);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
 
   // Check if the analyst is currently looking at a scan review result page
   const isReviewPage = location.pathname.startsWith("/review");
@@ -13,8 +22,21 @@ export default function Sidebar() {
   // Handle user logout: logs out from Supabase and takes user back to login page
   const handleSignOut = async (e) => {
     e.preventDefault();
-    await supabase.auth.signOut();
-    navigate("/");
+    if (pending.current) return;
+    pending.current = true;
+    setSigningOut(true);
+    setError("");
+    try {
+      const { error: signOutError } = await supabase.auth.signOut();
+      if (signOutError) throw signOutError;
+      clearPasswordRecovery();
+      if (mounted.current) navigate("/", { replace: true });
+    } catch (signOutError) {
+      if (mounted.current) setError(signOutError?.message || "Could not sign out. Please try again.");
+    } finally {
+      pending.current = false;
+      if (mounted.current) setSigningOut(false);
+    }
   };
 
   return (
@@ -79,9 +101,10 @@ export default function Sidebar() {
 
       {/* Bottom section with the Sign out action */}
       <div>
-        <a href="/" onClick={handleSignOut} className="signout-link">
-          Sign out
-        </a>
+        {error && <p role="alert">{error}</p>}
+        <button type="button" onClick={handleSignOut} className="signout-link" disabled={signingOut} style={{ width: "100%", cursor: signingOut ? "wait" : "pointer" }}>
+          {signingOut ? "Signing out..." : "Sign out"}
+        </button>
       </div>
     </aside>
   );

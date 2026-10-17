@@ -9,6 +9,8 @@ export default function ApiState({ loading, error, onRetry }) {
   return (
     <div
       className="state-box"
+      role={error ? "alert" : "status"}
+      aria-busy={loading}
       style={{
         marginBottom: "20px",
         // Show a red border if there is an error, otherwise a subtle gray border
@@ -24,7 +26,7 @@ export default function ApiState({ loading, error, onRetry }) {
       {error && (
         <>
           <p style={{ color: "#b91c1c", marginTop: 0 }}>{error}</p>
-          <Button variant="outline" size="small" onClick={onRetry}>
+          <Button variant="outline" size="small" onClick={onRetry} disabled={loading}>
             RETRY CONNECTION
           </Button>
         </>
