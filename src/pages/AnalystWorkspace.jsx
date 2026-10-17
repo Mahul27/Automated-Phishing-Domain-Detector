@@ -1,5 +1,5 @@
 // This page allows analysts to run manual single-domain scans, import bulk domains from CSV/JSON, and review personal analysis history.
-import { useState, useRef, useEffect } from "react";
+import { useCallback, useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../components/Header";
 import {
@@ -11,12 +11,47 @@ import {
 import Button from "../components/Button";
 import ApiState from "../components/ApiState";
 
+// Match the backend's hostname validation while accepting full website URLs.
+function normaliseManualDomain(value) {
+  const raw = value.trim();
+  if (!raw) throw new Error("Please enter a domain name.");
+  if (/\s|@/.test(raw)) {
+    throw new Error("Enter a domain or website URL without spaces or an email address.");
+  }
+  if (raw.includes("://") && !/^https?:\/\//i.test(raw)) {
+    throw new Error("Only HTTP and HTTPS website URLs are supported.");
+  }
+  const authority = raw.replace(/^https?:\/\//i, "").split(/[/?#]/)[0];
+  if (authority.includes(":")) throw new Error("Enter a domain without a port number.");
+  let hostname = authority.replace(/\.+$/, "").toLowerCase();
+  if (/[^\p{ASCII}]/u.test(hostname)) {
+    try {
+      hostname = new URL(`https://${hostname}`).hostname;
+    } catch {
+      throw new Error("Enter a valid international domain name.");
+    }
+  }
+  const labels = hostname.split(".");
+  if (
+    hostname.length > 253 || labels.length < 2 || labels.at(-1).length < 2 ||
+    labels.some((label) => !/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label))
+  ) {
+    throw new Error("Please enter a complete domain such as example.com.");
+  }
+  return hostname;
+}
+
 // Main Analyst Workspace component
 export default function AnalystWorkspace() {
   // Stored personal scans and loading states
   const [personalRecords, setPersonalRecords] = useState([]);
   const [recordsLoading, setRecordsLoading] = useState(true);
   const [recordsError, setRecordsError] = useState(null);
+  const [hasRecords, setHasRecords] = useState(false);
+  const mounted = useRef(false);
+  const hasLoaded = useRef(false);
+  const readRequest = useRef(null);
+  const mutation = useRef(null);
 
   // Active tab selection ("my_records", "manual_search", or "import_csv")
   const location = useLocation();
@@ -60,23 +95,38 @@ export default function AnalystWorkspace() {
   const navigate = useNavigate();
 
   // Fetches personal scan records from the backend API
-  const loadPersonalRecords = async (showLoading = true) => {
-    if (showLoading) setRecordsLoading(true);
-    setRecordsError(null);
+  const loadPersonalRecords = useCallback(async (fresh = false) => {
+    if (fresh !== true && readRequest.current) return readRequest.current;
+    const request = (async () => {
+      if (mounted.current) setRecordsLoading(!hasLoaded.current);
+      try {
+        const res = await fetchScans("personal");
+        if (mounted.current && readRequest.current === request) {
+          setPersonalRecords(res.records || []);
+          setRecordsError(null);
+          setHasRecords(true);
+          hasLoaded.current = true;
+        }
+      } catch (err) {
+        if (mounted.current && readRequest.current === request) setRecordsError(err.message || "Could not load personal records.");
+      } finally {
+        if (mounted.current && readRequest.current === request) setRecordsLoading(false);
+      }
+    })();
+    readRequest.current = request;
     try {
-      const res = await fetchScans("personal");
-      setPersonalRecords(res.records || []);
-    } catch (err) {
-      setRecordsError(err.message);
+      return await request;
     } finally {
-      setRecordsLoading(false);
+      if (readRequest.current === request) readRequest.current = null;
     }
-  };
+  }, []);
 
   // Load saved records when the component mounts
   useEffect(() => {
-    loadPersonalRecords(false);
-  }, []);
+    mounted.current = true;
+    loadPersonalRecords();
+    return () => { mounted.current = false; };
+  }, [loadPersonalRecords]);
 
   // Opens the hidden file browser input
   const handleBrowseClick = () => {
@@ -89,7 +139,9 @@ export default function AnalystWorkspace() {
   const handleFileInputChange = async (e) => {
     const input = e.target;
     const file = input.files?.[0];
-    if (!file || uploading) return;
+    if (!file || mutation.current) return;
+    const token = {};
+    mutation.current = token;
 
     setUploadError("");
     setFileData(null);
@@ -98,6 +150,7 @@ export default function AnalystWorkspace() {
     setUploading(true);
     try {
       const res = await uploadScanFile(file);
+      if (!mounted.current) return;
       setFileName(res.filename || file.name);
       setFileData({
         totalCount: res.accepted_count + res.rejected_count,
@@ -109,11 +162,13 @@ export default function AnalystWorkspace() {
         filename: res.filename || file.name,
         acceptedCount: res.accepted_count,
       });
-      await loadPersonalRecords();
+      // Supersede reads that started before the import; late snapshots cannot overwrite it.
+      if (mounted.current) await loadPersonalRecords(true);
     } catch (err) {
-      setUploadError(err.message || "Failed to upload file.");
+      if (mounted.current) setUploadError(err.message || "Failed to upload file.");
     } finally {
-      setUploading(false);
+      if (mutation.current === token) mutation.current = null;
+      if (mounted.current) setUploading(false);
       // Allow selecting the same file again after an error or a completed import.
       input.value = "";
     }
@@ -146,33 +201,28 @@ export default function AnalystWorkspace() {
   // Cleans, validates, and scans a single manually entered domain
   const handleScanSubmit = async (e) => {
     e.preventDefault();
+    if (mutation.current) return;
     setScanError("");
-    let input = domain;
-    if (!input) return setScanError("Please enter a domain name.");
-    if (/\s/.test(input))
-      return setScanError("The domain cannot contain spaces.");
-    // Strip protocol (http/https) and URL paths
-    input = input
-      .replace(/^https?:\/\//i, "")
-      .split("/")[0]
-      .split("?")[0];
-    if (/[^a-zA-Z0-9.-]/.test(input))
-      return setScanError(
-        "Invalid characters. A domain normally contains letters, numbers, dots, and hyphens.",
-      );
-    if (!/\.[a-zA-Z]{2,}$/.test(input))
-      return setScanError("Please enter a complete domain such as google.com.");
+    let input;
+    try {
+      input = normaliseManualDomain(domain);
+    } catch (err) {
+      setScanError(err.message);
+      return;
+    }
+    const token = {};
+    mutation.current = token;
     setDomain(input);
     setLoading(true);
 
     try {
       const res = await createScan(input);
-      await loadPersonalRecords();
-      navigate(`/review/personal/${res.id}`);
+      if (mounted.current) navigate(`/review/personal/${res.id}`);
     } catch (err) {
-      setScanError(err.message || "Failed to scan domain.");
+      if (mounted.current) setScanError(err.message || "Failed to scan domain.");
     } finally {
-      setLoading(false);
+      if (mutation.current === token) mutation.current = null;
+      if (mounted.current) setLoading(false);
     }
   };
 
@@ -234,9 +284,10 @@ export default function AnalystWorkspace() {
 
   // Calculate page slice for table pagination
   const totalPages = Math.ceil(sortedRecords.length / recordsPerPage) || 1;
+  const displayPage = Math.min(currentPage, totalPages);
   const currentRecords = sortedRecords.slice(
-    (currentPage - 1) * recordsPerPage,
-    currentPage * recordsPerPage,
+    (displayPage - 1) * recordsPerPage,
+    displayPage * recordsPerPage,
   );
 
   return (
@@ -244,7 +295,7 @@ export default function AnalystWorkspace() {
       {/* Top page header */}
       <Header
         title="Analyst Workspace"
-        subtitle="Domains you search manually or import from a file are stored here. They never change the automated live-dashboard totals."
+        subtitle="Domains you search manually or import from a file are stored here. They never change the live-dashboard totals."
       />
 
       {/* Overview metric cards */}
@@ -281,7 +332,7 @@ export default function AnalystWorkspace() {
           <h3>Awaiting review</h3>
           <div className="metric-sub">
             {
-              personalRecords.filter((r) => r.review_status === "Pending")
+              personalRecords.filter((r) => !r.review_status || r.review_status === "Pending")
                 .length
             }
           </div>
@@ -330,8 +381,11 @@ export default function AnalystWorkspace() {
             error={recordsError}
             onRetry={loadPersonalRecords}
           />
+          {recordsError && hasRecords && (
+            <p role="status">Showing the last loaded personal records. Retry to load the latest changes.</p>
+          )}
 
-          {!recordsLoading && !recordsError && (
+          {hasRecords && (
             <>
               <div className="filter-row" style={{ marginTop: "20px" }}>
                 <div style={{ display: "flex", flexDirection: "column" }}>
@@ -419,6 +473,7 @@ export default function AnalystWorkspace() {
                 </div>
               </div>
 
+              <div className="table-scroll" role="region" aria-label="Personal analysis records" tabIndex={0}>
               <table className="app-table">
                 <thead>
                   <tr>
@@ -509,6 +564,7 @@ export default function AnalystWorkspace() {
                   )}
                 </tbody>
               </table>
+              </div>
 
               {sortedRecords.length > 0 && (
                 <div
@@ -520,14 +576,14 @@ export default function AnalystWorkspace() {
                   }}
                 >
                   <span style={{ fontSize: "14px", color: "gray" }}>
-                    Page {currentPage} of {totalPages}
+                    Page {displayPage} of {totalPages}
                   </span>
                   <div style={{ display: "flex", gap: "10px" }}>
                     <Button
                       variant="outline"
                       size="small"
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
+                      onClick={() => setCurrentPage(Math.max(1, displayPage - 1))}
+                      disabled={displayPage === 1}
                     >
                       Previous
                     </Button>
@@ -535,9 +591,9 @@ export default function AnalystWorkspace() {
                       variant="outline"
                       size="small"
                       onClick={() =>
-                        setCurrentPage((p) => Math.min(totalPages, p + 1))
+                        setCurrentPage(Math.min(totalPages, displayPage + 1))
                       }
-                      disabled={currentPage === totalPages}
+                      disabled={displayPage === totalPages}
                     >
                       Next
                     </Button>
@@ -562,27 +618,26 @@ export default function AnalystWorkspace() {
                 value={domain}
                 onChange={(e) => setDomain(e.target.value)}
                 placeholder="Enter a domain, for example: google.com"
-                disabled={loading}
+                disabled={loading || uploading}
               />
               <Button
                 type="submit"
                 variant="outline"
                 size="large"
-                disabled={loading}
+                disabled={loading || uploading}
               >
                 {loading ? "SCANNING..." : "SCAN DOMAIN"}
               </Button>
             </div>
             {scanError && (
-              <p style={{ color: "red", marginTop: "10px" }}>{scanError}</p>
+              <p role="alert" style={{ color: "red", marginTop: "10px" }}>{scanError}</p>
             )}
           </form>
 
           {loading && (
-            <div className="state-box" style={{ marginTop: "20px" }}>
-              <strong>LOADING STATE</strong>
+            <div role="status" className="state-box" style={{ marginTop: "20px" }}>
               <p>Scanning domain...</p>
-              <p>Calculating demo lexical and risk features.</p>
+              <p>Analyzing domain features and calculating its risk score.</p>
             </div>
           )}
 
@@ -599,7 +654,7 @@ export default function AnalystWorkspace() {
               </li>
               <li>
                 <strong>Full URLs:</strong>{" "}
-                <code>https://www.example.com/path</code> (Base domain extracted
+                <code>https://www.example.com/path</code> (Hostname extracted
                 automatically)
               </li>
             </ul>
@@ -612,7 +667,7 @@ export default function AnalystWorkspace() {
                 <code>.org</code>)
               </li>
               <li style={{ marginBottom: "5px" }}>
-                No spaces or special characters allowed (except hyphens)
+                No spaces, email addresses, or port numbers. International domain names are supported.
               </li>
               <li>
                 Paths and query parameters are automatically removed before
@@ -642,7 +697,7 @@ export default function AnalystWorkspace() {
             accept=".csv,.json,text/csv,application/json"
             aria-label="Choose a CSV or JSON file"
             onChange={handleFileInputChange}
-            disabled={uploading}
+            disabled={uploading || loading}
             style={{ display: "none" }}
           />
           {uploadError && (
@@ -650,13 +705,19 @@ export default function AnalystWorkspace() {
               {uploadError}
             </p>
           )}
+          {recordsError && fileData && (
+            <div role="alert" style={{ marginBottom: "15px" }}>
+              <p>The import result is shown below, but My records could not be refreshed. Retry to load the latest records.</p>
+              <Button variant="outline" onClick={loadPersonalRecords}>RETRY RECORDS</Button>
+            </div>
+          )}
           {!fileData ? (
             <>
               <Button
                 variant="outline"
                 onClick={handleBrowseClick}
                 style={{ marginTop: "10px" }}
-                disabled={uploading}
+                disabled={uploading || loading}
               >
                 {uploading ? "SCANNING FILE..." : "BROWSE FILES"}
               </Button>

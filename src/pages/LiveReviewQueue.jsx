@@ -1,7 +1,7 @@
 // This page lets analysts search, filter, review, and export all live detected domains.
 import { useCallback, useEffect, useRef, useState } from "react";
 import Header from "../components/Header";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import Button from "../components/Button";
 import ApiState from "../components/ApiState";
 import { getRiskLevel, getRiskColor } from "../utils/risk";
@@ -65,6 +65,11 @@ function downloadLiveDomainsCsv(records) {
 
 // Main component for the Live Review Queue page
 export default function LiveReviewQueue() {
+  const { liveFeed } = useOutletContext();
+  const completedFetch = !liveFeed.refreshing && liveFeed.job?.status !== "running"
+    ? liveFeed.job?.id
+    : null;
+  const seenCompletedFetch = useRef(completedFetch);
   // Stored live records and loading/error states
   const [liveRecords, setLiveRecords] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -73,7 +78,6 @@ export default function LiveReviewQueue() {
 
   // Refs to avoid memory leaks and duplicate network calls
   const mounted = useRef(false);
-  const hasLoaded = useRef(false);
   const readRequest = useRef(null);
 
   // Fetches live domain scans from the backend API
@@ -81,14 +85,13 @@ export default function LiveReviewQueue() {
     if (readRequest.current) return readRequest.current;
 
     const request = (async () => {
-      if (mounted.current) setLoading(!hasLoaded.current);
+      if (mounted.current) setLoading(true);
       try {
         const scans = await fetchScans("live");
         if (mounted.current) {
           setLiveRecords(scans.records || []);
           setError(null);
           setHasData(true);
-          hasLoaded.current = true;
         }
       } catch (err) {
         if (mounted.current)
@@ -115,6 +118,19 @@ export default function LiveReviewQueue() {
       mounted.current = false;
     };
   }, [loadRecords]);
+
+  // Refresh once after an explicit fetch finishes; preserve the analyst's filters.
+  useEffect(() => {
+    if (!completedFetch || seenCompletedFetch.current === completedFetch) return;
+    seenCompletedFetch.current = completedFetch;
+    let cancelled = false;
+    const updateRecords = async () => {
+      if (readRequest.current) await readRequest.current;
+      if (!cancelled && mounted.current) await loadRecords();
+    };
+    updateRecords();
+    return () => { cancelled = true; };
+  }, [completedFetch, loadRecords]);
 
   const navigate = useNavigate();
 
@@ -197,6 +213,7 @@ export default function LiveReviewQueue() {
           type="text"
           className="search-input"
           placeholder="Search by domain"
+          aria-label="Search live domains or record ID"
           value={searchTerm}
           onChange={(e) => {
             setSearchTerm(e.target.value);
@@ -206,6 +223,7 @@ export default function LiveReviewQueue() {
         {/* Risk level filter dropdown */}
         <select
           className="filter-select"
+          aria-label="Filter live domains by risk level"
           value={riskFilter}
           onChange={(e) => {
             setRiskFilter(e.target.value);
@@ -220,6 +238,7 @@ export default function LiveReviewQueue() {
         {/* Review status filter dropdown */}
         <select
           className="filter-select"
+          aria-label="Filter live domains by review status"
           value={statusFilter}
           onChange={(e) => {
             setStatusFilter(e.target.value);
@@ -262,6 +281,7 @@ export default function LiveReviewQueue() {
         <>
           {/* Results counter and pagination controls */}
           <div
+            className="records-toolbar"
             style={{
               display: "flex",
               justifyContent: "space-between",

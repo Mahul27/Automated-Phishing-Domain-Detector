@@ -1,5 +1,5 @@
 // This page lets users request a password reset email or set a new password from a recovery link.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Button from "../components/Button";
 import logo from "../assets/logo.webp";
@@ -31,6 +31,10 @@ export default function ForgotPassword() {
   const [recoveryReady, setRecoveryReady] = useState(false);
   const [sending, setSending] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [passwordChanged, setPasswordChanged] = useState(false);
+  const mounted = useRef(true);
+  const pending = useRef(false);
+  const redirectTimer = useRef(null);
 
   // Feedback messages
   const [error, setError] = useState("");
@@ -39,6 +43,8 @@ export default function ForgotPassword() {
   // Check if the user arrived via a valid recovery link
   useEffect(() => {
     let componentIsMounted = true;
+    let recoveryEventReceived = false;
+    mounted.current = true;
 
     // Shows the new password input form once verified
     const showNewPasswordForm = (session) => {
@@ -47,18 +53,24 @@ export default function ForgotPassword() {
       setRecoveryReady(true);
       setCheckingRecovery(false);
       setError("");
+      setSuccess("");
     };
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!componentIsMounted) return;
       if (event === "PASSWORD_RECOVERY") {
+        recoveryEventReceived = true;
         markPasswordRecoveryStarted();
         showNewPasswordForm(session);
       }
 
       if (event === "SIGNED_OUT") {
+        recoveryEventReceived = true;
         clearPasswordRecovery();
+        setRecoveryReady(false);
+        setCheckingRecovery(false);
       }
     });
 
@@ -72,15 +84,11 @@ export default function ForgotPassword() {
       // Supabase may process the confirmation link before React finishes
       // loading, so also check for the temporary recovery session.
       supabase.auth.getSession().then(({ data, error: sessionError }) => {
-        if (!componentIsMounted) return;
+        if (!componentIsMounted || recoveryEventReceived) return;
 
-        if (sessionError) {
-          setError(sessionError.message);
-          setCheckingRecovery(false);
-          return;
-        }
+        if (sessionError) throw sessionError;
 
-        if (data.session) {
+        if (data?.session) {
           showNewPasswordForm(data.session);
           return;
         }
@@ -90,6 +98,10 @@ export default function ForgotPassword() {
           "This confirmation link is invalid or has expired. Please request a new email.",
         );
         setCheckingRecovery(false);
+      }).catch((sessionError) => {
+        if (!componentIsMounted || recoveryEventReceived) return;
+        setError(sessionError?.message || "Could not check your confirmation link. Please try again.");
+        setCheckingRecovery(false);
       });
     } else {
       setCheckingRecovery(false);
@@ -97,6 +109,8 @@ export default function ForgotPassword() {
 
     return () => {
       componentIsMounted = false;
+      mounted.current = false;
+      clearTimeout(redirectTimer.current);
       subscription.unsubscribe();
     };
   }, []);
@@ -104,35 +118,36 @@ export default function ForgotPassword() {
   // Step 1: Sends a password reset email to the user's address
   const handleSendConfirmationEmail = async (event) => {
     event.preventDefault();
-    const inputEmail = event.target.email.value;
+    if (pending.current) return;
+    const inputEmail = event.currentTarget.email.value.trim();
 
     setError("");
     setSuccess("");
     setSending(true);
-
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(
-      inputEmail,
-      { redirectTo: `${window.location.origin}/forgot-password` },
-    );
-
-    if (resetError) {
-      setError(resetError.message);
-      setSending(false);
-      return;
+    pending.current = true;
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+        inputEmail,
+        { redirectTo: `${window.location.origin}/forgot-password` },
+      );
+      if (resetError) throw resetError;
+      if (mounted.current) setSuccess(
+        "If an account exists for this email, a confirmation email has been sent. Open it and click the confirmation link to choose a new password.",
+      );
+    } catch (resetError) {
+      if (mounted.current) setError(resetError?.message || "Could not send the confirmation email. Please try again.");
+    } finally {
+      pending.current = false;
+      if (mounted.current) setSending(false);
     }
-
-    // A generic message avoids revealing whether an account exists.
-    setSuccess(
-      "If an account exists for this email, a confirmation email has been sent. Open it and click the confirmation link to choose a new password.",
-    );
-    setSending(false);
   };
 
   // Step 2: Saves the new password chosen by the user
   const handleResetPassword = async (event) => {
     event.preventDefault();
-    const newPassword = event.target.newPassword.value;
-    const confirmPassword = event.target.confirmPassword.value;
+    if (pending.current) return;
+    const newPassword = event.currentTarget.newPassword.value;
+    const confirmPassword = event.currentTarget.confirmPassword.value;
 
     setError("");
     setSuccess("");
@@ -142,27 +157,42 @@ export default function ForgotPassword() {
       setError("Passwords do not match!");
       return;
     }
-
-    setSubmitting(true);
-    // Send updated password to Supabase
-    const { error: updateError } = await supabase.auth.updateUser({
-      password: newPassword,
-    });
-
-    if (updateError) {
-      setError(updateError.message);
-      setSubmitting(false);
+    if (newPassword.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+    if (!recoveryReady) {
+      setError("Open a valid confirmation link before changing your password.");
       return;
     }
 
-    // Success notice and redirect to login
-    setSuccess("Password changed successfully! Returning to login...");
-    clearPasswordRecovery();
-    await supabase.auth.signOut();
-
-    setTimeout(() => {
-      navigate("/");
-    }, 1500);
+    setSubmitting(true);
+    pending.current = true;
+    let updated = false;
+    try {
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+      if (updateError) throw updateError;
+      updated = true;
+      clearPasswordRecovery();
+      if (mounted.current) {
+        setPasswordChanged(true);
+        setRecoveryReady(false);
+        setSuccess("Password changed successfully! Returning to login...");
+      }
+      const { error: signOutError } = await supabase.auth.signOut();
+      if (signOutError) throw signOutError;
+      if (mounted.current) redirectTimer.current = setTimeout(() => {
+        navigate("/", { replace: true });
+      }, 1500);
+    } catch (updateError) {
+      if (mounted.current) {
+        if (updated) setSuccess("Password changed successfully. Use the login link below to continue.");
+        setError(updateError?.message || "Could not finish password recovery. Please try again.");
+      }
+    } finally {
+      pending.current = false;
+      if (mounted.current) setSubmitting(false);
+    }
   };
 
   return (
@@ -193,29 +223,31 @@ export default function ForgotPassword() {
 
             {/* Link checking message */}
             {checkingRecovery && (
-              <div style={{ marginBottom: "10px" }}>
+              <div role="status" style={{ marginBottom: "10px" }}>
                 Checking your confirmation link...
               </div>
             )}
             {/* Error banner */}
             {error && (
-              <div style={{ color: "red", marginBottom: "10px" }}>{error}</div>
+              <div role="alert" style={{ color: "red", marginBottom: "10px" }}>{error}</div>
             )}
             {/* Success banner */}
             {success && (
-              <div style={{ color: "green", marginBottom: "10px" }}>
+              <div role="status" style={{ color: "green", marginBottom: "10px" }}>
                 {success}
               </div>
             )}
 
             {/* Step 1 Form: Request password reset link */}
-            {!checkingRecovery && !recoveryReady && (
+            {!checkingRecovery && !recoveryReady && !passwordChanged && (
               <form onSubmit={handleSendConfirmationEmail}>
                 <div className="form-group">
                   <input
                     type="email"
                     name="email"
                     placeholder="Enter your registered email"
+                    aria-label="Registered email address"
+                    autoComplete="email"
                     disabled={sending}
                     required
                   />
@@ -240,6 +272,8 @@ export default function ForgotPassword() {
                     type="password"
                     name="newPassword"
                     placeholder="New Password"
+                    aria-label="New password"
+                    autoComplete="new-password"
                     minLength="8"
                     disabled={submitting}
                     required
@@ -250,6 +284,8 @@ export default function ForgotPassword() {
                     type="password"
                     name="confirmPassword"
                     placeholder="Confirm New Password"
+                    aria-label="Confirm new password"
+                    autoComplete="new-password"
                     minLength="8"
                     disabled={submitting}
                     required

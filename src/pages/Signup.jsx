@@ -1,46 +1,58 @@
 // This is the signup page where new users can register for an account.
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import Button from "../components/Button";
 import logo from "../assets/logo.webp";
-import { supabase } from "../utils/supabase";
+import { clearPasswordRecovery, supabase } from "../utils/supabase";
 
 export default function Signup() {
   const navigate = useNavigate();
   // Stores error message if signup fails
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const pending = useRef(false);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
 
   // Handles form submission to create a new user account with Supabase
   const handleSignup = async (e) => {
     e.preventDefault();
-    const email = e.target.email.value;
-    const password = e.target.password.value;
-    const confirmPassword = e.target.confirmPassword.value;
+    if (pending.current) return;
+    const email = e.currentTarget.email.value.trim();
+    const password = e.currentTarget.password.value;
+    const confirmPassword = e.currentTarget.confirmPassword.value;
+    setError("");
 
     // Check that both passwords match before sending
     if (password !== confirmPassword) {
       setError("Passwords do not match!");
       return;
     }
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
 
-    // Call Supabase signup API
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-
-    // Handle signup response
-    if (error) {
-      setError(error.message);
-    } else if (data.session) {
-      // Direct login if email confirmation is not required
-      navigate("/dashboard");
-    } else {
-      // Prompt user to verify email
-      alert(
-        "Account created. Check your email to confirm it before logging in.",
-      );
-      navigate("/");
+    pending.current = true;
+    setSubmitting(true);
+    try {
+      const { data, error: signupError } = await supabase.auth.signUp({ email, password });
+      if (signupError) throw signupError;
+      if (!mounted.current) return;
+      if (data?.session) {
+        clearPasswordRecovery();
+        navigate("/dashboard", { replace: true });
+      } else {
+        navigate("/", { replace: true, state: { message: "Account created. Check your email to confirm it before logging in." } });
+      }
+    } catch (signupError) {
+      if (mounted.current) setError(signupError?.message || "Could not create your account. Please try again.");
+    } finally {
+      pending.current = false;
+      if (mounted.current) setSubmitting(false);
     }
   };
 
@@ -70,7 +82,7 @@ export default function Signup() {
 
             {/* Error message banner */}
             {error && (
-              <div style={{ color: "red", marginBottom: "10px" }}>{error}</div>
+              <div role="alert" style={{ color: "red", marginBottom: "10px" }}>{error}</div>
             )}
 
             {/* Account creation form */}
@@ -81,6 +93,9 @@ export default function Signup() {
                   type="email"
                   name="email"
                   placeholder="Email Address"
+                  aria-label="Email address"
+                  autoComplete="username"
+                  disabled={submitting}
                   required
                 />
               </div>
@@ -91,6 +106,9 @@ export default function Signup() {
                   type="password"
                   name="password"
                   placeholder="Password"
+                  aria-label="Password"
+                  autoComplete="new-password"
+                  disabled={submitting}
                   minLength="8"
                   required
                 />
@@ -102,14 +120,17 @@ export default function Signup() {
                   type="password"
                   name="confirmPassword"
                   placeholder="Confirm Password"
+                  aria-label="Confirm password"
+                  autoComplete="new-password"
+                  disabled={submitting}
                   minLength="8"
                   required
                 />
               </div>
 
               {/* Create account button */}
-              <Button type="submit" variant="outline" fullWidth size="large">
-                Create Account
+              <Button type="submit" variant="outline" fullWidth size="large" disabled={submitting}>
+                {submitting ? "Creating account..." : "Create Account"}
               </Button>
             </form>
 

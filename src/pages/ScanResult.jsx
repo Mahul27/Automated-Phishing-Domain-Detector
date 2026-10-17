@@ -1,5 +1,5 @@
 // This page displays in-depth scan results, risk indicators, model explanations, and human review decisions for a domain.
-import { useState, useEffect } from "react";
+import { useCallback, useRef, useState, useEffect } from "react";
 import Header from "../components/Header";
 import { useParams, useNavigate } from "react-router-dom";
 import { fetchScan, updateScanReview } from "../Services/Client";
@@ -7,10 +7,36 @@ import { getRiskColor } from "../utils/risk";
 import Button from "../components/Button";
 import ApiState from "../components/ApiState";
 
-// Main Scan Result component
+// GET scan details returns flat fields; older scan responses also include features.
+function scanFeatureValues(record) {
+  const nested = record.features || {};
+  return {
+    domain_age_days: nested.domain_age_days ?? record.domain_age,
+    registration_period_days: nested.registration_period_days ?? record.registration_period,
+    domain_length: nested.domain_length ?? record.domain_length,
+    num_hyphens: nested.num_hyphens ?? record.hyphens,
+    num_digits: nested.num_digits ?? record.digits,
+    entropy_domain: nested.entropy_domain ?? record.shannon_entropy,
+    brand_keyword: nested.brand_keyword ?? record.brand_keyword,
+    typosquatting_score: nested.typosquatting_score ?? record.typosquatting_similarity,
+    ssl_certificate_age_days: nested.ssl_certificate_age_days ?? record.ssl_cert_age,
+    tld: nested.tld ?? record.tld,
+  };
+}
+
+function reviewDateText(value) {
+  if (!value) return "Not recorded";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "Not recorded" : date.toLocaleString();
+}
+
+// A changed route gets a fresh form and cannot receive an older record's response.
 export default function ScanResult() {
-  // Read route parameters (source is "live" or "personal", id is the scan record ID)
   const { source, id } = useParams();
+  return <ScanResultDetails key={`${source}/${id}`} source={source} id={id} />;
+}
+
+function ScanResultDetails({ source, id }) {
   const navigate = useNavigate();
 
   // Scan record data and fetch states
@@ -22,29 +48,57 @@ export default function ScanResult() {
   const [reviewStatus, setReviewStatus] = useState("pending");
   const [analystNote, setAnalystNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const mounted = useRef(false);
+  const readRequest = useRef(null);
+  const saveRequest = useRef(false);
 
-  const searchId = parseInt(id);
-  const isPersonalRecord = source === "personal";
+  const searchId = /^[1-9]\d*$/.test(id) && Number.isSafeInteger(Number(id)) ? Number(id) : null;
+  const validRoute = searchId !== null && ["personal", "live"].includes(source);
+  const isPersonalRecord = record?.source
+    ? record.source !== "live"
+    : source === "personal";
+  const historyPath = isPersonalRecord ? "/workspace" : "/queue";
 
   // Loads scan details by ID from the backend API
-  const loadRecord = async (showLoading = true) => {
-    if (showLoading) setLoading(true);
-    setError(null);
-    try {
-      const data = await fetchScan(searchId);
-      setRecord(data);
-    } catch (err) {
-      setError(err.message || "Failed to load scan details.");
-    } finally {
+  const loadRecord = useCallback(async () => {
+    if (readRequest.current) return readRequest.current;
+    if (!validRoute) {
+      setError("This scan link is invalid. Open a record from your history.");
       setLoading(false);
+      return;
     }
-  };
+    setLoading(true);
+    setError(null);
+    const request = (async () => {
+      try {
+        const data = await fetchScan(searchId);
+        if (mounted.current) {
+          setRecord(data);
+          setReviewStatus("pending");
+          setAnalystNote(data?.note || "");
+          setSaveError("");
+        }
+      } catch (err) {
+        if (mounted.current) setError(err.message || "Failed to load scan details.");
+      } finally {
+        if (mounted.current) setLoading(false);
+      }
+    })();
+    readRequest.current = request;
+    try {
+      return await request;
+    } finally {
+      if (readRequest.current === request) readRequest.current = null;
+    }
+  }, [searchId, validRoute]);
 
   // Fetch scan details whenever the scan ID changes
   useEffect(() => {
-    loadRecord(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchId]);
+    mounted.current = true;
+    loadRecord();
+    return () => { mounted.current = false; };
+  }, [loadRecord]);
 
   if (loading || error || !record) {
     return (
@@ -53,26 +107,27 @@ export default function ScanResult() {
           title="Review Details"
           subtitle="Detailed analysis of the requested domain."
         />
-        <ApiState loading={loading} error={error} onRetry={loadRecord} />
+        {validRoute ? (
+          <ApiState loading={loading} error={error} onRetry={loadRecord} />
+        ) : (
+          <p role="alert">This scan link is invalid. Open a record from your history.</p>
+        )}
         {!loading && !error && !record && (
           <div style={{ padding: "20px", textAlign: "center" }}>
             <h2>Scan result not found.</h2>
-            <Button
-              variant="secondary"
-              onClick={() =>
-                navigate(isPersonalRecord ? "/workspace" : "/queue")
-              }
-            >
-              &larr; Return to Scan History
-            </Button>
           </div>
         )}
+        <Button variant="secondary" onClick={() => navigate(historyPath)}>
+          &larr; Return to Scan History
+        </Button>
       </>
     );
   }
 
   // Helper flags to highlight risk features (e.g., brand match, domain age, entropy)
-  const features = record.features || {};
+  const features = scanFeatureValues(record);
+  const reviewedAt = reviewDateText(record.review_date);
+  const tld = String(features.tld || "").replace(/^\./, "").toLowerCase();
   const hasShapExplanation =
     record.model_name === "XGBoost" &&
     typeof record.explanation === "string" &&
@@ -84,7 +139,7 @@ export default function ScanResult() {
     features.registration_period_days <= 365;
   const highEntropy =
     features.entropy_domain != null && features.entropy_domain >= 3.5;
-  const brandMatch = Boolean(features.brand_keyword);
+  const brandMatch = Number(features.brand_keyword) > 0;
   const closeBrandMatch =
     features.typosquatting_score != null &&
     features.typosquatting_score >= 0.75;
@@ -94,12 +149,15 @@ export default function ScanResult() {
 
   // Saves the analyst's final review decision and note to the backend
   const handleSaveDecision = async () => {
+    if (saveRequest.current || !mounted.current) return;
     if (reviewStatus === "pending") {
-      navigate(isPersonalRecord ? "/workspace" : "/queue");
+      setSaveError("Choose Confirmed phishing or Not phishing before saving your review.");
       return;
     }
 
+    saveRequest.current = true;
     setSubmitting(true);
+    setSaveError("");
     const decisionText =
       reviewStatus === "phishing" ? "Confirmed Phishing" : "False Positive";
 
@@ -108,11 +166,12 @@ export default function ScanResult() {
         decision: decisionText,
         note: analystNote,
       });
-      navigate(isPersonalRecord ? "/workspace" : "/queue");
+      if (mounted.current) navigate(historyPath);
     } catch (err) {
-      console.error("Failed to submit decision", err);
-      alert("Failed to submit decision. Please try again.");
-      setSubmitting(false);
+      if (mounted.current) setSaveError(err.message || "Failed to submit decision. Please try again.");
+    } finally {
+      saveRequest.current = false;
+      if (mounted.current) setSubmitting(false);
     }
   };
 
@@ -128,7 +187,7 @@ export default function ScanResult() {
       <div style={{ marginBottom: "15px" }}>
         <Button
           variant="secondary"
-          onClick={() => navigate(isPersonalRecord ? "/workspace" : "/queue")}
+          onClick={() => navigate(historyPath)}
         >
           &larr; Back to History
         </Button>
@@ -156,7 +215,7 @@ export default function ScanResult() {
                 fontWeight: "bold",
               }}
             >
-              {record.risk_score}/100
+              {record.risk_score == null ? "Unknown" : `${record.risk_score}/100`}
             </span>
           </li>
           <li style={{ marginBottom: "10px" }}>
@@ -172,7 +231,7 @@ export default function ScanResult() {
                 fontWeight: "bold",
               }}
             >
-              {record.prediction}
+              {record.prediction || "Unknown"}
             </span>
           </li>
           <li style={{ marginBottom: "10px" }}>
@@ -188,14 +247,15 @@ export default function ScanResult() {
                 <strong>Analyst Decision:</strong>{" "}
                 <span>{record.decision}</span>
               </li>
-              <li style={{ marginBottom: "10px" }}>
-                <strong>Reviewer:</strong> <span>{record.reviewer}</span>
-              </li>
+              {record.reviewer && (
+                <li style={{ marginBottom: "10px" }}>
+                  <strong>Reviewer:</strong> <span>{record.reviewer}</span>
+                </li>
+              )}
               <li style={{ marginBottom: "10px" }}>
                 <strong>Review Date:</strong>{" "}
                 <span>
-                  {record.review_date ||
-                    new Date(record.scan_time).toLocaleString()}
+                  {reviewedAt}
                 </span>
               </li>
             </>
@@ -214,6 +274,7 @@ export default function ScanResult() {
       >
         <h2>Feature & Risk Information</h2>
         <p>Values returned by the backend analyzer:</p>
+        <div className="table-scroll" role="region" aria-label="Scan features and risk indicators" tabIndex={0}>
         <table className="app-table" style={{ marginTop: "10px" }}>
           <thead>
             <tr style={{ backgroundColor: "#f0f0f0", textAlign: "left" }}>
@@ -225,10 +286,10 @@ export default function ScanResult() {
           <tbody>
             <tr>
               <td>1. Domain Age</td>
-              <td>{record.domain_age}</td>
+              <td>{features.domain_age_days ?? "Unknown"}</td>
               <td
                 style={{
-                  color: youngDomain ? "red" : "green",
+                  color: features.domain_age_days == null ? "#64748b" : youngDomain ? "red" : "green",
                   fontWeight: "bold",
                 }}
               >
@@ -241,10 +302,10 @@ export default function ScanResult() {
             </tr>
             <tr>
               <td>2. Registration Period</td>
-              <td>{record.registration_period}</td>
+              <td>{features.registration_period_days ?? "Unknown"}</td>
               <td
                 style={{
-                  color: shortRegistration ? "red" : "green",
+                  color: features.registration_period_days == null ? "#64748b" : shortRegistration ? "red" : "green",
                   fontWeight: "bold",
                 }}
               >
@@ -257,46 +318,46 @@ export default function ScanResult() {
             </tr>
             <tr>
               <td>3. Domain Length</td>
-              <td>{record.domain_length} characters</td>
+              <td>{features.domain_length == null ? "Unknown" : `${features.domain_length} characters`}</td>
               <td
                 style={{
-                  color: record.domain_length > 20 ? "orange" : "green",
+                  color: features.domain_length == null ? "#64748b" : features.domain_length > 20 ? "orange" : "green",
                   fontWeight: "bold",
                 }}
               >
-                {record.domain_length > 20 ? "Medium Risk" : "Low Risk"}
+                {features.domain_length == null ? "Unknown" : features.domain_length > 20 ? "Medium Risk" : "Low Risk"}
               </td>
             </tr>
             <tr>
               <td>4. Number of Hyphens</td>
-              <td>{record.hyphens} hyphens</td>
+              <td>{features.num_hyphens == null ? "Unknown" : `${features.num_hyphens} hyphens`}</td>
               <td
                 style={{
-                  color: record.hyphens > 1 ? "red" : "green",
+                  color: features.num_hyphens == null ? "#64748b" : features.num_hyphens > 1 ? "red" : "green",
                   fontWeight: "bold",
                 }}
               >
-                {record.hyphens > 1 ? "High Risk" : "Low Risk"}
+                {features.num_hyphens == null ? "Unknown" : features.num_hyphens > 1 ? "High Risk" : "Low Risk"}
               </td>
             </tr>
             <tr>
               <td>5. Number of Digits</td>
-              <td>{record.digits} digits</td>
+              <td>{features.num_digits == null ? "Unknown" : `${features.num_digits} digits`}</td>
               <td
                 style={{
-                  color: record.digits > 0 ? "orange" : "green",
+                  color: features.num_digits == null ? "#64748b" : features.num_digits > 0 ? "orange" : "green",
                   fontWeight: "bold",
                 }}
               >
-                {record.digits > 0 ? "Medium Risk" : "Low Risk"}
+                {features.num_digits == null ? "Unknown" : features.num_digits > 0 ? "Medium Risk" : "Low Risk"}
               </td>
             </tr>
             <tr>
               <td>6. Shannon Entropy</td>
-              <td>{record.shannon_entropy} entropy</td>
+              <td>{features.entropy_domain == null ? "Unknown" : `${features.entropy_domain} entropy`}</td>
               <td
                 style={{
-                  color: highEntropy ? "red" : "green",
+                  color: features.entropy_domain == null ? "#64748b" : highEntropy ? "red" : "green",
                   fontWeight: "bold",
                 }}
               >
@@ -309,22 +370,22 @@ export default function ScanResult() {
             </tr>
             <tr>
               <td>7. Brand Keyword</td>
-              <td>{record.brand_keyword}</td>
+              <td>{features.brand_keyword ?? "Unknown"}</td>
               <td
                 style={{
-                  color: brandMatch ? "red" : "green",
+                  color: features.brand_keyword == null ? "#64748b" : brandMatch ? "red" : "green",
                   fontWeight: "bold",
                 }}
               >
-                {brandMatch ? "High Risk" : "Low Risk"}
+                {features.brand_keyword == null ? "Unknown" : brandMatch ? "High Risk" : "Low Risk"}
               </td>
             </tr>
             <tr>
               <td>8. Typosquatting Similarity</td>
-              <td>{record.typosquatting_similarity}</td>
+              <td>{features.typosquatting_score ?? "Unknown"}</td>
               <td
                 style={{
-                  color: closeBrandMatch ? "red" : "green",
+                  color: features.typosquatting_score == null ? "#64748b" : closeBrandMatch ? "red" : "green",
                   fontWeight: "bold",
                 }}
               >
@@ -337,10 +398,10 @@ export default function ScanResult() {
             </tr>
             <tr>
               <td>9. SSL Certificate Age</td>
-              <td>{record.ssl_cert_age}</td>
+              <td>{features.ssl_certificate_age_days ?? "Unknown"}</td>
               <td
                 style={{
-                  color: newCertificate ? "red" : "green",
+                  color: features.ssl_certificate_age_days == null ? "#64748b" : newCertificate ? "red" : "green",
                   fontWeight: "bold",
                 }}
               >
@@ -353,23 +414,24 @@ export default function ScanResult() {
             </tr>
             <tr>
               <td>10. Top-Level Domain (TLD)</td>
-              <td>{record.tld}</td>
+              <td>{tld ? `.${tld}` : "Unknown"}</td>
               <td
                 style={{
                   color:
-                    record.tld === ".xyz" || record.tld === ".info"
+                    !tld ? "#64748b" : tld === "xyz" || tld === "info"
                       ? "orange"
                       : "green",
                   fontWeight: "bold",
                 }}
               >
-                {record.tld === ".xyz" || record.tld === ".info"
+                {!tld ? "Unknown" : tld === "xyz" || tld === "info"
                   ? "Medium Risk"
                   : "Low Risk"}
               </td>
             </tr>
           </tbody>
         </table>
+        </div>
       </section>
 
       {/* 3. Model explanation: SHAP feature importances or heuristic notes */}
@@ -425,12 +487,9 @@ export default function ScanResult() {
               Decision Recorded
             </h2>
             <p style={{ marginBottom: "12px" }}>
-              This scan was reviewed by <strong>{record.reviewer}</strong> on{" "}
-              <strong>
-                {record.review_date ||
-                  new Date(record.scan_time).toLocaleString()}
-              </strong>
-              . The final decision was <strong>{record.decision}</strong>.
+              This scan was reviewed{record.reviewer ? <> by <strong>{record.reviewer}</strong></> : ""}
+              {reviewedAt !== "Not recorded" ? <> on <strong>{reviewedAt}</strong></> : ""}.
+              {" "}The final decision was <strong>{record.decision}</strong>.
             </p>
             {record.note && (
               <div
@@ -498,6 +557,7 @@ export default function ScanResult() {
                     name="reviewStatus"
                     value="pending"
                     checked={reviewStatus === "pending"}
+                    disabled={submitting}
                     onChange={(e) => setReviewStatus(e.target.value)}
                     style={{ marginTop: "4px" }}
                   />
@@ -523,6 +583,7 @@ export default function ScanResult() {
                     name="reviewStatus"
                     value="phishing"
                     checked={reviewStatus === "phishing"}
+                    disabled={submitting}
                     onChange={(e) => setReviewStatus(e.target.value)}
                     style={{ marginTop: "4px" }}
                   />
@@ -548,6 +609,7 @@ export default function ScanResult() {
                     name="reviewStatus"
                     value="not_phishing"
                     checked={reviewStatus === "not_phishing"}
+                    disabled={submitting}
                     onChange={(e) => setReviewStatus(e.target.value)}
                     style={{ marginTop: "4px" }}
                   />
@@ -565,7 +627,7 @@ export default function ScanResult() {
 
             <div style={{ marginBottom: "24px" }}>
               <h4 style={{ marginBottom: "8px", fontSize: "14px" }}>
-                Analyst note (optional)
+                <label htmlFor="analyst-note">Analyst note (optional)</label>
               </h4>
               <p
                 style={{
@@ -577,6 +639,10 @@ export default function ScanResult() {
                 What led you to this decision?
               </p>
               <textarea
+                id="analyst-note"
+                disabled={submitting}
+                maxLength={2000}
+                aria-describedby="analyst-note-count"
                 value={analystNote}
                 onChange={(e) => setAnalystNote(e.target.value.slice(0, 2000))}
                 style={{
@@ -591,6 +657,7 @@ export default function ScanResult() {
                 }}
               />
               <div
+                id="analyst-note-count"
                 style={{
                   textAlign: "right",
                   fontSize: "12px",
@@ -602,6 +669,7 @@ export default function ScanResult() {
               </div>
             </div>
 
+            {saveError && <p role="alert" style={{ color: "#b91c1c" }}>{saveError}</p>}
             <Button
               variant="primary"
               onClick={handleSaveDecision}
