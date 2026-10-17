@@ -30,6 +30,34 @@ function reviewDateText(value) {
   return Number.isNaN(date.getTime()) ? "Not recorded" : date.toLocaleString();
 }
 
+function shapExplanationItems(explanation) {
+  const featureNames = {
+    ssl_certificate_age_days: "SSL certificate age",
+    domain_age_days: "Domain age",
+    registration_period_days: "Registration period",
+    domain_length: "Domain length",
+    num_hyphens: "Number of hyphens",
+    num_digits: "Number of digits",
+    entropy_domain: "Domain name randomness",
+    brand_keyword: "Brand keyword",
+    typosquatting_score: "Brand name similarity",
+    tld: "Domain extension",
+  };
+
+  return explanation
+    .replace(/^XGBoost SHAP(?:\s*\(model contributions\))?\s*:\s*/, "")
+    .split(/[;\n]+/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => {
+      const readable = item.replace(/\b[a-z][a-z0-9_]*\b/g, (word) =>
+        Object.hasOwn(featureNames, word) ? featureNames[word] : word,
+      );
+      const sentence = readable.charAt(0).toUpperCase() + readable.slice(1);
+      return /[.!?]$/.test(sentence) ? sentence : `${sentence}.`;
+    });
+}
+
 // A changed route gets a fresh form and cannot receive an older record's response.
 export default function ScanResult() {
   const { source, id } = useParams();
@@ -446,7 +474,7 @@ function ScanResultDetails({ source, id }) {
         <h2>SHAP Explanation</h2>
         <p style={{ color: "#64748b" }}>
           {hasShapExplanation
-            ? "The strongest feature contributions to this XGBoost prediction:"
+            ? "The main factors that influenced this prediction:"
             : "SHAP values are available only for scans made with the trained XGBoost model."}
         </p>
         <div
@@ -457,13 +485,21 @@ function ScanResultDetails({ source, id }) {
             borderLeft: "4px solid #cbd5e1",
           }}
         >
-          <p style={{ margin: 0, whiteSpace: "pre-wrap", lineHeight: "1.5" }}>
-            {hasShapExplanation
-              ? record.explanation
-              : record.model_name === "XGBoost"
+          {hasShapExplanation ? (
+            <ol style={{ margin: 0, paddingLeft: "24px", lineHeight: "1.6" }}>
+              {shapExplanationItems(record.explanation).map((item, index) => (
+                <li key={index} style={{ padding: "4px 0", overflowWrap: "anywhere" }}>
+                  {item}
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p style={{ margin: 0, whiteSpace: "pre-wrap", lineHeight: "1.5" }}>
+              {record.model_name === "XGBoost"
                 ? "No SHAP values were saved for this scan."
                 : "This scan used the heuristic fallback, so it has no SHAP values."}
-          </p>
+            </p>
+          )}
           {!hasShapExplanation && record.explanation && (
             <p style={{ margin: "12px 0 0", lineHeight: "1.5" }}>
               <strong>Current analysis:</strong> {record.explanation}
