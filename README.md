@@ -9,7 +9,7 @@ An automated cybersecurity system designed to identify newly registered and susp
 ### 1. Live Dashboard
 - **Overview Metrics**: Displays live domains monitored, high-risk alerts, pending reviews, and completed reviews.
 - **Charts**: Risk score distribution and detection breakdown powered by Recharts.
-- **OpenSquat Feed Controls**: Manually fetch and scan a chosen batch of new domains, view the last successful fetch time and feed errors, and open saved domains for review. Results stay unchanged during review until another fetch is requested.
+- **OpenSquat Feed Controls**: Manually fetch and scan up to 10, 23, or 50 new domains per request (default 10), view the last successful fetch time and feed errors, and open saved domains for review. Results stay unchanged during review until another fetch is requested.
 
 ### 2. Analyst Workspace
 - **Manual Domain Scan**: Scan any domain in real time.
@@ -186,9 +186,10 @@ mysql -u <username> -p < database/Automated_Phishing_Domain_Detector_Schema.sql
 ---
 
 ### 4. Fetching Live Domains (OpenSquat)
-In the frontend, open **Live dashboard**, choose a batch
-size, and select **Fetch new domains**. The default batch is 10 new scans; the
-backend supports up to 2,000. Fetching and scanning can take several minutes.
+In the frontend, open **Live dashboard**, choose **10**, **23**, or **50** under
+**New domains per fetch**, and select **Fetch new domains**. The default is **10**.
+These are the only frontend dropdown options; the backend API and CLI still
+support up to 2,000. Fetching and scanning can take several minutes.
 The page shows the number added and readable feed or scanning messages.
 An existing domain row is reused atomically so simultaneous scans cannot fail
 by inserting the same domain name. If some scans fail, the successful additions
