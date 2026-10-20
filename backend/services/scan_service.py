@@ -1,6 +1,7 @@
 
 """Validate, analyse, save and format domain scan results."""
 
+import json
 import re
 from datetime import datetime
 from urllib.parse import urlsplit
@@ -58,7 +59,9 @@ def normalise_domain(value: str) -> str:
     try:
         hostname = hostname.encode("idna").decode("ascii")
     except UnicodeError as error:
-        raise ValueError("Invalid international domain name.") from error
+        raise ValueError(
+            "Invalid international domain name."
+        ) from error
 
     labels = hostname.split(".")
 
@@ -96,7 +99,7 @@ def scan_domain(
     try:
         features = extract_features(domain, source=source)
 
-        # The model receives the original features only.
+        # The model receives the original ten features only.
         result = predict_domain(features)
 
         # Registration date is display metadata, not an ML feature.
@@ -126,6 +129,10 @@ def scan_domain(
         float(result["phishing_probability"]) * 100,
         2,
     )
+
+    # These are the real numerical contributions calculated by model_service.
+    # None means SHAP values were unavailable, not that they were zero.
+    shap_values = result.get("shap_values")
 
     try:
         # Create or reuse the domain row safely under concurrent scans.
@@ -271,6 +278,32 @@ def scan_domain(
             },
         )
 
+        # Save actual SHAP contributions only when they were calculated.
+        # The table was created by the teammate and references scan_results.
+        if shap_values is not None:
+            if not isinstance(shap_values, dict):
+                raise ValueError(
+                    "SHAP values must be a feature-to-value dictionary."
+                )
+
+            shap_json = json.dumps(shap_values, allow_nan=False)
+
+            db.execute(
+                text(
+                    """
+                    INSERT INTO scan_shap_values
+                        (scan_id, shap_values)
+                    VALUES
+                        (:scan_id, :shap_values)
+                    """
+                ),
+                {
+                    "scan_id": scan_id,
+                    "shap_values": shap_json,
+                },
+            )
+
+        # Commit the scan and all associated data together.
         db.commit()
 
     except Exception as error:
@@ -291,6 +324,7 @@ def scan_domain(
         "scan_time": datetime.now(),
         "model_name": result.get("model_name", "XGBoost"),
         "explanation": result.get("explanation"),
+        "shap_values": shap_values,
         "features": features,
     }
 
@@ -319,6 +353,7 @@ def scan_response(scan, collection=None):
         "note": None,
         "model_name": scan.get("model_name", "XGBoost"),
         "explanation": scan.get("explanation"),
+        "shap_values": scan.get("shap_values"),
         "confidence_score": round(
             max(risk_score, 100 - risk_score) / 100,
             4,

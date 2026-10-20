@@ -1,5 +1,6 @@
 
 from datetime import datetime
+import json
 import logging
 
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Query
@@ -28,6 +29,33 @@ from backend.services.import_service import parse_imported_domains
 
 app = FastAPI(title="Threat Hunter API", version="1.0.0")
 logger = logging.getLogger(__name__)
+
+
+# ============================================================
+# SHAP JSON HELPER
+# ============================================================
+
+def decode_shap_values(value):
+    """Decode stored SHAP JSON without inventing missing contributions."""
+
+    if value is None:
+        return None
+
+    if isinstance(value, dict):
+        return value
+
+    if isinstance(value, (bytes, bytearray)):
+        value = value.decode("utf-8")
+
+    if isinstance(value, str):
+        try:
+            decoded = json.loads(value)
+            return decoded if isinstance(decoded, dict) else None
+        except (json.JSONDecodeError, TypeError):
+            logger.warning("Could not decode stored SHAP values.")
+            return None
+
+    return None
 
 
 # ============================================================
@@ -235,12 +263,15 @@ def _rows(
             df.brand_keyword_detection,
             df.typosquatting_similarity,
             df.ssl_certificate_age,
-            df.tld
+            df.tld,
+            ssv.shap_values
         FROM scan_results sr
         INNER JOIN domains d
             ON sr.domain_id = d.domain_id
         LEFT JOIN domain_features df
             ON sr.scan_id = df.scan_id
+        LEFT JOIN scan_shap_values ssv
+            ON sr.scan_id = ssv.scan_id
         WHERE {user_filter}
         ORDER BY sr.scan_time DESC
     """)
@@ -291,6 +322,7 @@ def get_scans(
             "tld": tld,
             "source": "manual" if collection == "personal" else "live",
             "original": domain,
+            "shap_values": decode_shap_values(row["shap_values"]),
         })
 
     return {"records": records}
@@ -331,7 +363,8 @@ def get_scan(
             df.tld,
             mo.model_name,
             mo.confidence_score,
-            mo.explanation
+            mo.explanation,
+            ssv.shap_values
         FROM scan_results sr
         INNER JOIN domains d
             ON sr.domain_id = d.domain_id
@@ -339,6 +372,8 @@ def get_scan(
             ON sr.scan_id = df.scan_id
         LEFT JOIN model_outputs mo
             ON sr.scan_id = mo.scan_id
+        LEFT JOIN scan_shap_values ssv
+            ON sr.scan_id = ssv.scan_id
         WHERE sr.scan_id = :scan_id
         ORDER BY mo.output_id DESC
         LIMIT 1
@@ -360,7 +395,7 @@ def get_scan(
     ):
         raise HTTPException(status_code=404, detail="Scan not found.")
 
-    # Review fields come from MySQL, not an in-memory dictionary.
+    # Review fields and SHAP contributions come from MySQL.
     result = {
         "id": row["scan_id"],
         "domain": row["domain_name"],
@@ -398,6 +433,7 @@ def get_scan(
             else float(row["risk_score"] or 0) / 100
         ),
         "explanation": row["explanation"],
+        "shap_values": decode_shap_values(row["shap_values"]),
     }
 
     return result
@@ -566,7 +602,11 @@ async def import_scans(
 
 @app.post("/api/v1/opensquat/refresh")
 def refresh_opensquat(
-    limit: int = Query(default=LIVE_SCAN_LIMIT, ge=1, le=MAX_LIVE_SCAN_LIMIT),
+    limit: int = Query(
+        default=LIVE_SCAN_LIMIT,
+        ge=1,
+        le=MAX_LIVE_SCAN_LIMIT,
+    ),
 ):
     try:
         return refresh_live_domains(limit)
@@ -574,5 +614,8 @@ def refresh_opensquat(
         logger.exception("Unexpected OpenSquat refresh failure")
         raise HTTPException(
             status_code=500,
-            detail="Could not refresh the OpenSquat feed. Please try again later.",
+            detail=(
+                "Could not refresh the OpenSquat feed. "
+                "Please try again later."
+            ),
         )
