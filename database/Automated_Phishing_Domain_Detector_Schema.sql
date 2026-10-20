@@ -136,3 +136,24 @@ USE automated_phishing_detector;
 -- Checking that the all 5 project tables are available
 SHOW TABLES;
 
+
+-- ==================================================
+-- WEEK 15 DATABASE DEVELOPMENT
+-- Creating the new table for the SHAP explanations
+-- ==================================================
+
+-- Store SHAP values for each scan in a new table without changing the existing five tables.
+
+CREATE TABLE IF NOT EXISTS scan_shap_values (
+    scan_id INT NOT NULL PRIMARY KEY,
+    shap_values JSON NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_scan_shap_values_scan
+        FOREIGN KEY (scan_id)
+        REFERENCES scan_results(scan_id)
+        ON DELETE CASCADE
+);
+
+-- Verify that all the 6 project tables are available
+SHOW TABLES;
