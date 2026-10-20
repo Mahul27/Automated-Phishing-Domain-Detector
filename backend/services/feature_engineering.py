@@ -792,13 +792,27 @@ def calculate_entropy(domain):
 # ============================================================
 
 def calculate_brand_keyword(domain):
+    """
+    Detect brand keywords without treating an exact brand-name
+    match as suspicious by itself.
+    """
     main_domain = get_extracted_domain(domain).domain.lower()
 
+    if not main_domain:
+        return 0
+
+    brands = {
+        brand.strip().lower()
+        for brand in BRAND_KEYWORDS
+        if brand and brand.strip()
+    }
+
+    # An exact brand match alone is not a phishing signal.
+    if main_domain in brands:
+        return 0
+
     return int(
-        any(
-            brand in main_domain
-            for brand in BRAND_KEYWORDS
-        )
+        any(brand in main_domain for brand in brands)
     )
 
 
@@ -807,6 +821,10 @@ def calculate_brand_keyword(domain):
 # ============================================================
 
 def calculate_typosquatting_score(domain):
+    """
+    Compare the full extracted domain label with brand keywords.
+    An exact brand-name match does not count as typosquatting.
+    """
     main_domain = get_extracted_domain(domain).domain.lower()
 
     if not main_domain:
@@ -815,30 +833,22 @@ def calculate_typosquatting_score(domain):
     best_score = 0.0
 
     for brand in BRAND_KEYWORDS:
+        brand = brand.strip().lower()
+
         if not brand:
             continue
 
-        brand_length = len(brand)
+        # Do not treat an exact brand match as a typo.
+        if main_domain == brand:
+            continue
 
-        if len(main_domain) < brand_length:
-            windows = [main_domain]
+        score = SequenceMatcher(
+            None,
+            main_domain,
+            brand,
+        ).ratio()
 
-        else:
-            windows = [
-                main_domain[i:i + brand_length]
-                for i in range(
-                    len(main_domain) - brand_length + 1
-                )
-            ]
-
-        for window in windows:
-            score = SequenceMatcher(
-                None,
-                window,
-                brand,
-            ).ratio()
-
-            best_score = max(best_score, score)
+        best_score = max(best_score, score)
 
     return round(best_score, 3)
 
