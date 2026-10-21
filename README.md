@@ -25,7 +25,7 @@ An automated cybersecurity system designed to identify newly registered and susp
 - **Risk Scoring**: Generates a 0–100 risk score and classification (Phishing vs Legitimate).
 - **Model Confidence**: Confidence percentage of the prediction.
 - **10 Extracted Features**: Full breakdown of all calculated domain attributes.
-- **Explainable AI (SHAP)**: Shows which features increased or decreased the phishing score.
+- **Explainable AI (SHAP)**: The scan result page displays the backend's saved contributions for all 10 features, with signed SHAP values and their effect on the phishing estimate. Values are in log-odds, not percentages or individual risk ratings. The backend's plain-language summary appears as numbered points. Older scans keep their saved text explanation; missing numerical contributions show as **Not available**, never as zero.
 - **Analyst Decision**: Human analysts can mark a scan as **Confirmed Phishing** or **False Positive** and save notes.
 
 ### 5. 10 Implemented Features Extracted per Domain
@@ -79,13 +79,14 @@ Only the technologies actually implemented in the project:
 
 ## Database Structure (MySQL)
 
-The database schema (`database/Automated_Phishing_Domain_Detector_Schema.sql`) includes 5 tables:
+The database schema (`database/Automated_Phishing_Domain_Detector_Schema.sql`) includes 6 tables:
 
 1. `app_users` - Stores user IDs linked to Supabase authentication.
 2. `domains` - Unique domain names and creation timestamps.
 3. `scan_results` - Scan timestamp, prediction (Phishing/Legitimate), risk score (0–100), and user link.
 4. `domain_features` - Stores the 10 extracted domain features for each scan.
 5. `model_outputs` - Stores model name, confidence score, and explanation for each scan.
+6. `scan_shap_values` - Stores the actual grouped SHAP contributions as JSON for each scan.
 
 ---
 
@@ -122,7 +123,7 @@ Automated-Phishing-Domain-Detector/
 
 ### Prerequisites
 - Python 3.12+
-- Node.js (v18+) and npm
+- Node.js 22.12+ (or 20.19.x) and npm, as required by Vite 8
 - MySQL Server
 
 ---
@@ -132,6 +133,12 @@ Run the SQL schema in MySQL:
 ```bash
 mysql -u <username> -p < database/Automated_Phishing_Domain_Detector_Schema.sql
 ```
+
+For an existing database, apply the `CREATE TABLE IF NOT EXISTS scan_shap_values`
+statement in the **WEEK 15 DATABASE DEVELOPMENT** section of that file before
+using Kartar's updated backend. Its scan endpoints now read this table. Older
+scans without a SHAP row will still display their saved features and explanation;
+new XGBoost scans save numerical contributions when SHAP calculation succeeds.
 
 ---
 
