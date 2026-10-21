@@ -9,7 +9,7 @@ An automated cybersecurity system designed to identify newly registered and susp
 ### 1. Live Dashboard
 - **Overview Metrics**: Displays live domains monitored, high-risk alerts, pending reviews, and completed reviews.
 - **Charts**: Risk score distribution and detection breakdown powered by Recharts.
-- **OpenSquat Feed Controls**: Manually fetch and scan up to 10, 23, or 50 new domains per request (default 10), view the last successful fetch time and feed errors, and open saved domains for review. Results stay unchanged during review until another fetch is requested.
+- **OpenSquat Feed Controls**: Manually fetch and scan up to 10, 25, or 50 new domains per request (default 10), view the last successful fetch time and feed errors, and open saved domains for review. Results stay unchanged during review until another fetch is requested.
 
 ### 2. Analyst Workspace
 - **Manual Domain Scan**: Scan any domain in real time.
@@ -26,7 +26,7 @@ An automated cybersecurity system designed to identify newly registered and susp
 - **Model Confidence**: Confidence percentage of the prediction.
 - **10 Extracted Features**: Full breakdown of all calculated domain attributes.
 - **Explainable AI (SHAP)**: The scan result page displays the backend's saved contributions for all 10 features, with signed SHAP values and their effect on the phishing estimate. Values are in log-odds, not percentages or individual risk ratings. The backend's plain-language summary appears as numbered points. Older scans keep their saved text explanation; missing numerical contributions show as **Not available**, never as zero.
-- **Analyst Decision**: Human analysts can mark a scan as **Confirmed Phishing** or **False Positive** and save notes.
+- **Analyst Decision**: Analysts choose **Phishing** or **Not phishing**, saved as **Confirmed Phishing** or **Confirmed Legitimate**, and can add notes. A separate **Model Outcome** compares the saved prediction with that verdict: True Positive, False Positive, True Negative, or False Negative. Risk scores and predictions stay unchanged. Older reviews saved as "False Positive" are read as legitimate verdicts, with the outcome calculated from the original prediction.
 
 ### 5. 10 Implemented Features Extracted per Domain
 1. **Domain Age** (days) - Extracted via live RDAP query.
@@ -193,7 +193,7 @@ new XGBoost scans save numerical contributions when SHAP calculation succeeds.
 ---
 
 ### 4. Fetching Live Domains (OpenSquat)
-In the frontend, open **Live dashboard**, choose **10**, **23**, or **50** under
+In the frontend, open **Live dashboard**, choose **10**, **25**, or **50** under
 **New domains per fetch**, and select **Fetch new domains**. The default is **10**.
 These are the only frontend dropdown options; the backend API and CLI still
 support up to 2,000. Fetching and scanning can take several minutes.

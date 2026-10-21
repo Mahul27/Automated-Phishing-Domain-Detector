@@ -54,7 +54,7 @@ function LiveFeedControls({ feed }) {
               onChange={(event) => setLimit(Number(event.target.value))}
               disabled={busy}
             >
-              {[10, 23, 50].map((count) => (
+              {[10, 25, 50].map((count) => (
                 <option key={count} value={count}>
                   {count.toLocaleString()}
                 </option>
@@ -275,6 +275,7 @@ export default function LiveDashboard() {
                     fill="#d1fae5"
                     stroke="none"
                     fillOpacity={0.5}
+                    tooltipType="none"
                   />
                   <Line
                     type="monotone"

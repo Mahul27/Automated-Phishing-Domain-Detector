@@ -13,6 +13,7 @@ from backend.database import get_db, init_db
 from backend.config import LIVE_SCAN_LIMIT
 from backend.auth import CurrentUser, get_current_user
 from backend.services.dashboard_service import build_dashboard_summary
+from backend.services.review_service import normalise_review_decision, review_fields
 from backend.services.model_service import model_status
 from backend.services.opensquat_service import (
     MAX_LIVE_SCAN_LIMIT,
@@ -307,7 +308,9 @@ def get_scans(
             "risk_score": float(row["risk_score"] or 0),
             "prediction": row["prediction_result"] or "Legitimate",
             "review_status": row["review_status"] or "Pending",
-            "decision": row["analyst_decision"],
+            **review_fields(
+                row["prediction_result"], row["analyst_decision"], row["review_status"],
+            ),
             "note": row["analyst_note"],
             "review_date": (
                 row["reviewed_at"].isoformat()
@@ -402,7 +405,9 @@ def get_scan(
         "risk_score": float(row["risk_score"] or 0),
         "prediction": row["prediction_result"],
         "review_status": row["review_status"] or "Pending",
-        "decision": row["analyst_decision"],
+        **review_fields(
+            row["prediction_result"], row["analyst_decision"], row["review_status"],
+        ),
         "note": row["analyst_note"],
         "review_date": (
             row["reviewed_at"].isoformat()
@@ -450,13 +455,14 @@ def save_review(
     db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
 ):
-    if review.decision not in {
+    decision = normalise_review_decision(review.decision)
+    if decision not in {
         "Confirmed Phishing",
-        "False Positive",
+        "Confirmed Legitimate",
     }:
         raise HTTPException(
             status_code=400,
-            detail="Choose Confirmed Phishing or False Positive.",
+            detail="Choose Confirmed Phishing or Confirmed Legitimate.",
         )
 
     mysql_user_id = get_mysql_user_id(db, current_user)
@@ -473,7 +479,7 @@ def save_review(
                   AND (user_id = :user_id OR user_id IS NULL)
             """),
             {
-                "decision": review.decision,
+                "decision": decision,
                 "note": review.note,
                 "scan_id": scan_id,
                 "user_id": mysql_user_id,
@@ -492,7 +498,7 @@ def save_review(
         return {
             "id": scan_id,
             "review_status": "Completed",
-            "decision": review.decision,
+            "decision": decision,
             "note": review.note,
         }
 

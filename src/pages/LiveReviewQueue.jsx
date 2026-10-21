@@ -16,6 +16,7 @@ const columns = [
   "prediction",
   "review_status",
   "decision",
+  "model_outcome",
   "note",
   "scan_time",
   "review_date",
@@ -40,6 +41,7 @@ function buildLiveDomainsCsv(records) {
     record.prediction,
     record.review_status || "Pending",
     record.decision,
+    record.model_outcome,
     record.note,
     record.scan_time,
     record.review_date,
@@ -181,7 +183,7 @@ export default function LiveReviewQueue() {
     } else if (statusFilter === "Not phishing") {
       matchesStatus =
         record.review_status === "Completed" &&
-        record.decision === "False Positive";
+        record.decision === "Confirmed Legitimate";
     }
 
     return matchesSearch && matchesRisk && matchesStatus;
@@ -331,7 +333,8 @@ export default function LiveReviewQueue() {
                   <th>Risk Score</th>
                   <th>Prediction</th>
                   <th>Review Status</th>
-                  <th>Decision</th>
+                  <th>Analyst Decision</th>
+                  <th>Model Outcome</th>
                   <th>Action</th>
                 </tr>
               </thead>
@@ -372,6 +375,7 @@ export default function LiveReviewQueue() {
                       </td>
                       <td>{record.review_status || "Pending"}</td>
                       <td>{record.decision || "-"}</td>
+                      <td>{record.model_outcome || "-"}</td>
                       <td>
                         <Button
                           variant="primary"
@@ -386,7 +390,7 @@ export default function LiveReviewQueue() {
                 ) : (
                   /* Empty state message when no records match */
                   <tr>
-                    <td colSpan="8" style={{ textAlign: "center" }}>
+                    <td colSpan="9" style={{ textAlign: "center" }}>
                       {liveRecords.length === 0
                         ? "No live domains have been saved yet. Use Fetch new domains to check the OpenSquat feed."
                         : "No records found matching your filters."}

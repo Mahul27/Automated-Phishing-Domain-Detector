@@ -271,7 +271,7 @@ function ScanResultDetails({ source, id }) {
     setSaveError("");
 
     const decisionText =
-      reviewStatus === "phishing" ? "Confirmed Phishing" : "False Positive";
+      reviewStatus === "phishing" ? "Confirmed Phishing" : "Confirmed Legitimate";
 
     try {
       await updateScanReview(searchId, {
@@ -366,6 +366,15 @@ function ScanResultDetails({ source, id }) {
               <li style={{ marginBottom: "10px" }}>
                 <strong>Analyst Decision:</strong> {record.decision}
               </li>
+
+              {record.model_outcome && (
+                <li style={{ marginBottom: "10px" }}>
+                  <strong>Model Outcome:</strong> {record.model_outcome}
+                  <span style={{ color: "#64748b", fontSize: "0.9em" }}>
+                    {" "}(compared with the analyst's decision)
+                  </span>
+                </li>
+              )}
 
               {record.reviewer && (
                 <li style={{ marginBottom: "10px" }}>
@@ -749,6 +758,13 @@ function ScanResultDetails({ source, id }) {
               . The final decision was <strong>{record.decision}</strong>.
             </p>
 
+            {record.model_outcome && (
+              <p style={{ marginBottom: "12px" }}>
+                Compared with the analyst's decision, the model outcome was{" "}
+                <strong>{record.model_outcome}</strong>.
+              </p>
+            )}
+
             {record.note && (
               <div
                 style={{
@@ -878,7 +894,7 @@ function ScanResultDetails({ source, id }) {
                       Not phishing
                     </div>
                     <div style={{ color: "#64748b", fontSize: "13px" }}>
-                      Dismiss the suspected threat
+                      Record a legitimate domain
                     </div>
                   </div>
                 </label>
